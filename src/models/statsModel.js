@@ -54,19 +54,28 @@ export function computeSquadStats(votes, matchResults) {
     }
   });
 
+  // Deduplicate: if a match was overridden, only use the latest result
+  const latestByMatch = new Map();
   matchResults.forEach(res => {
+    const existing = latestByMatch.get(res.match_id);
+    if (!existing || res.settled_at > existing.settled_at) {
+      latestByMatch.set(res.match_id, res);
+    }
+  });
+
+  latestByMatch.forEach(res => {
     const { match_id: matchId, winner_team: winner } = res;
     const mVotes = votes.filter(v => v.match_id === matchId);
     if (mVotes.length === 0) return;
 
-    const pot = mVotes.length * BET_AMOUNT;
+    const pot          = mVotes.length * BET_AMOUNT;
     const winnersCount = mVotes.filter(v => v.chosen_team === winner).length;
 
     if (winnersCount > 0 && winnersCount < mVotes.length) {
       const individualPayout = Math.floor(pot / winnersCount);
       mVotes.forEach(v => {
         if (v.chosen_team === winner) {
-          stats[v.user_name].wins += 1;
+          stats[v.user_name].wins     += 1;
           stats[v.user_name].earnings += (individualPayout - BET_AMOUNT);
         } else {
           stats[v.user_name].earnings -= BET_AMOUNT;

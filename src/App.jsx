@@ -14,7 +14,7 @@ import HistoryView from './views/HistoryView';
 import BottomNav   from './views/BottomNav';
 
 export default function App() {
-  const {
+    const {
     // auth
     user,
     loading,
@@ -40,6 +40,7 @@ export default function App() {
     handleAddCustomMatch,
     handleUploadSchedule,
     handleFinalizeWinner,
+    handleOverrideResult,
     handleShare,
   } = useAppController();
 
@@ -92,9 +93,10 @@ export default function App() {
                 logout={handleLogout}
                 onSync={handleUploadSchedule}
                 onSettle={handleFinalizeWinner}
+                onOverrideResult={handleOverrideResult}
                 activeMatches={activeMatches}
+                matchResults={matchResults}
                 isAdmin={isAdmin}
-                onAddCustomMatch={handleAddCustomMatch}
                 onViewHistory={() => setViewingHistoryFor(user.displayName)}
               />
             )}

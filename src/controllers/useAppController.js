@@ -11,6 +11,7 @@ import {
   addCustomMatch as addCustomMatchService,
   uploadSchedule as uploadScheduleService,
   finalizeWinner as finalizeWinnerService,
+  overrideMatchResult as overrideMatchResultService,
   shareLink as shareLinkService,
 } from '../services/firestoreService';
 
@@ -110,6 +111,10 @@ export function useAppController() {
     await finalizeWinnerService(matchId, winner);
   };
 
+  const handleOverrideResult = async (matchId, winner) => {
+    await overrideMatchResultService(matchId, winner);
+  };
+
   const handleShare = async () => {
     await shareLinkService();
   };
@@ -148,6 +153,7 @@ export function useAppController() {
     handleAddCustomMatch,
     handleUploadSchedule,
     handleFinalizeWinner,
+    handleOverrideResult,
     handleShare,
   };
 }

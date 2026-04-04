@@ -104,6 +104,23 @@ export async function finalizeWinner(matchId, winner) {
 }
 
 /**
+ * Override an existing (auto or manual) match result with a corrected winner.
+ * Writes a new doc with a fresh timestamp — computeSquadStats will automatically
+ * use this as the authoritative result since it picks the latest per match_id.
+ *
+ * @param {string} matchId
+ * @param {string} winner  full team name
+ */
+export async function overrideMatchResult(matchId, winner) {
+  await addDoc(collection(db, 'match_results'), {
+    match_id:    matchId,
+    winner_team: winner,
+    settled_at:  new Date().toISOString(),
+    override:    true,   // audit flag
+  });
+}
+
+/**
  * Share the app link via Web Share API or clipboard fallback.
  */
 export async function shareLink() {
