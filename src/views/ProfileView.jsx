@@ -4,8 +4,6 @@ export default function ProfileView({
   user,
   logout,
   onSync,
-  onSettle,
-  activeMatches,
   isAdmin,
   onAddCustomMatch,
   onViewHistory,
@@ -40,28 +38,11 @@ export default function ProfileView({
 
           <button
             className="btn-primary"
-            style={{ fontSize: '0.75rem', padding: '0.6rem', background: 'var(--muted)', width: '100%', marginBottom: '1.5rem' }}
+            style={{ fontSize: '0.75rem', padding: '0.6rem', background: 'var(--muted)', width: '100%' }}
             onClick={onSync}
           >
             ⚠️ Danger: Factory Reset &amp; Re-Sync Schedule
           </button>
-
-          <div>
-            <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.5rem' }}>SETTLE RECENT MATCHES:</p>
-            {activeMatches.map(m => (
-              <button
-                key={m.id}
-                className="btn-primary"
-                style={{ fontSize: '0.7rem', height: '35px', marginBottom: '5px', background: 'var(--bg)', color: 'var(--text)' }}
-                onClick={() => onSettle(m.id, prompt(`Winner of ${m.fixture}?`))}
-              >
-                Settle {m.num}
-              </button>
-            ))}
-            {activeMatches.length === 0 && (
-              <p style={{ fontSize: '0.7rem', opacity: 0.5 }}>No active matches to settle right now.</p>
-            )}
-          </div>
         </div>
       )}
 

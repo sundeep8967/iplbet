@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import {
   collection, addDoc, onSnapshot,
-  query, orderBy, where,
+  query, orderBy, where, updateDoc, doc, deleteDoc
 } from 'firebase/firestore';
 import { IPL_SCHEDULE } from '../models/constants';
 
@@ -14,7 +14,17 @@ import { IPL_SCHEDULE } from '../models/constants';
  */
 export function subscribeVotes(callback) {
   const q = query(collection(db, 'votes'), orderBy('created_at', 'desc'));
-  return onSnapshot(q, snap => callback(snap.docs.map(d => d.data())));
+  return onSnapshot(q, snap => {
+    const allVotes = snap.docs.map(doc => doc.data());
+    const uniqueVotesMap = new Map();
+    allVotes.forEach(v => {
+       const key = `${v.user_name}_${v.match_id}`;
+       if (!uniqueVotesMap.has(key)) {
+          uniqueVotesMap.set(key, v);
+       }
+    });
+    callback(Array.from(uniqueVotesMap.values()));
+  });
 }
 
 /**
@@ -24,7 +34,7 @@ export function subscribeVotes(callback) {
  */
 export function subscribeResults(callback) {
   const q = query(collection(db, 'match_results'), orderBy('settled_at', 'desc'));
-  return onSnapshot(q, snap => callback(snap.docs.map(d => d.data())));
+  return onSnapshot(q, snap => callback(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 }
 
 /**
@@ -56,6 +66,7 @@ export async function addVote(user, matchId, team) {
     chosen_team:  team,
     created_at:   new Date().toISOString(),
   });
+  console.log(`Voted successfully for ${team}!`);
 }
 
 /**
@@ -73,6 +84,17 @@ export async function addCustomMatch({ team1, team2, day, month, hour, minute, a
     created_at: new Date().toISOString(),
   });
 }
+
+/**
+ * Delete a custom match from Firestore.
+ * @param {string} matchId
+ */
+export async function deleteMatch(matchId) {
+  if (confirm('Delete this match permanently?')) {
+    await deleteDoc(doc(db, 'matches', matchId));
+  }
+}
+
 
 /**
  * Bulk-upload the static IPL schedule to Firestore (admin only).
@@ -93,14 +115,25 @@ export async function uploadSchedule() {
  * @param {string} matchId
  * @param {string | null} winner
  */
-export async function finalizeWinner(matchId, winner) {
-  if (!winner || !confirm(`Settle ${winner}?`)) return;
-  await addDoc(collection(db, 'match_results'), {
-    match_id:    matchId,
-    winner_team: winner,
-    settled_at:  new Date().toISOString(),
-  });
-  alert('Settled!');
+export async function finalizeWinner(matchId, winner, existingResultId = null) {
+  if (!winner) return;
+  try {
+    if (existingResultId) {
+      await updateDoc(doc(db, 'match_results', existingResultId), {
+        winner_team: winner,
+        settled_at:  new Date().toISOString(),
+      });
+    } else {
+      await addDoc(collection(db, 'match_results'), {
+        match_id:    matchId,
+        winner_team: winner,
+        settled_at:  new Date().toISOString(),
+      });
+    }
+    console.log(`Successfully settled match for ${winner}`);
+  } catch (e) {
+    console.error("Error settling match:", e);
+  }
 }
 
 /**

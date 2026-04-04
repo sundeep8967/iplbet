@@ -31,6 +31,7 @@ export default function App() {
     // data
     votes,
     matchResults,
+    allMatches,
     activeMatches,
     squadStats,
     userStats,
@@ -40,6 +41,7 @@ export default function App() {
     handleAddCustomMatch,
     handleUploadSchedule,
     handleFinalizeWinner,
+    handleDeleteMatch,
     handleShare,
   } = useAppController();
 
@@ -65,7 +67,14 @@ export default function App() {
         ) : (
           <>
             {activeTab === 'home' && (
-              <HomeView user={user} stats={userStats} onShare={handleShare} />
+              <HomeView 
+                 user={user} 
+                 stats={userStats} 
+                 onShare={handleShare} 
+                 votes={votes} 
+                 matchResults={matchResults} 
+                 allMatches={allMatches} 
+              />
             )}
 
             {activeTab === 'bet' && (
@@ -79,7 +88,14 @@ export default function App() {
             )}
 
             {activeTab === 'matches' && (
-              <ScheduleView isAdmin={isAdmin} onAddMatch={handleAddCustomMatch} />
+              <ScheduleView 
+                isAdmin={isAdmin} 
+                onAddMatch={handleAddCustomMatch} 
+                allMatches={allMatches} 
+                matchResults={matchResults} 
+                onSettle={handleFinalizeWinner} 
+                onDeleteMatch={handleDeleteMatch}
+              />
             )}
 
             {activeTab === 'ranks' && (
@@ -91,8 +107,6 @@ export default function App() {
                 user={user}
                 logout={handleLogout}
                 onSync={handleUploadSchedule}
-                onSettle={handleFinalizeWinner}
-                activeMatches={activeMatches}
                 isAdmin={isAdmin}
                 onAddCustomMatch={handleAddCustomMatch}
                 onViewHistory={() => setViewingHistoryFor(user.displayName)}
