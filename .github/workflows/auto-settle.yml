@@ -2,10 +2,11 @@ name: Auto Settle IPL Matches
 
 on:
   # ── Scheduled runs ──────────────────────────────────────────────────────────
-  # Runs every 30 minutes from 1:30 PM UTC to 8:00 PM UTC
-  # = 7:00 PM to 1:30 AM IST — covers both afternoon (3:30 PM) and evening (7:30 PM) matches
   schedule:
-    - cron: '0,30 13,14,15,16,17,18,19,20 * * *'
+    # WEEKDAYS (Mon-Fri) — 10:30 PM to 2:00 AM IST (Night matches only)
+    - cron: '0,30 17,18,19,20 * * 1-5'
+    # WEEKENDS (Sat-Sun) — 6:30 PM to 2:00 AM IST (Includes 3:30 PM day matches)
+    - cron: '0,30 13,14,15,16,17,18,19,20 * * 0,6'
 
   # ── Manual trigger from GitHub UI ───────────────────────────────────────────
   workflow_dispatch:
