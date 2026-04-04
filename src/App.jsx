@@ -211,27 +211,41 @@ export default function App() {
   };
 
   const updateSettings = async (updates, silent = false) => {
+    console.log('📝 updateSettings called with:', updates);
     try {
+      console.log('🔍 Querying room_settings collection...');
       const q = query(collection(db, 'room_settings'), limit(1));
       const snap = await getDocs(q);
-      
-      // Always merge full settings to avoid partial writes
+      console.log('📦 Snapshot empty?', snap.empty, '| docs:', snap.size);
+
       const merged = { 
         ...roomSettings, 
         ...updates, 
         creator_uid: updates.creator_uid || roomSettings.creator_uid || user.uid,
         admins: roomSettings.admins || [user.uid]
       };
+      console.log('📋 Writing to Firestore:', JSON.stringify(merged, null, 2));
 
       if (snap.empty) {
-        await addDoc(collection(db, 'room_settings'), merged);
+        console.log('➕ No existing doc — creating new document...');
+        const docRef = await addDoc(collection(db, 'room_settings'), merged);
+        console.log('✅ Document created! ID:', docRef.id);
       } else {
+        console.log('✏️ Existing doc found — updating:', snap.docs[0].id);
         await updateDoc(snap.docs[0].ref, merged);
+        console.log('✅ Document updated!');
       }
-      if (!silent) alert("Settings updated!");
+
+      // Immediately update local state — don't wait for onSnapshot
+      setRoomSettings(prev => ({ ...prev, ...merged }));
+      console.log('🔄 Local state updated with merged settings');
+
+      if (!silent) alert('Settings updated!');
       return true;
     } catch (e) {
-      console.error('Firebase error:', e);
+      console.error('🔴 Firebase error code:', e.code);
+      console.error('🔴 Firebase error message:', e.message);
+      console.error('🔴 Full error:', e);
       return false;
     }
   };
@@ -296,9 +310,11 @@ export default function App() {
   const isAdmin = user && (isCreatorSetup || isCreator || roomSettings.admin_names?.includes(user.displayName));
   const hasAccess = isCreatorSetup || isCreator || isMember;
 
-  const handleCreateRoom = async (squadName, inviteCode, betAmount, setLoading, setError) => {
+  const handleCreateRoom = async (squadName, inviteCode, betAmount, setLoading, setError, setStatus) => {
     setLoading(true);
     setError('');
+    setStatus('Connecting to Firebase...');
+    
     const ok = await updateSettings({
       squad_name: squadName,
       invite_code: inviteCode,
@@ -307,11 +323,16 @@ export default function App() {
       members: [{ uid: user.uid, name: user.displayName, photo: user.photoURL, joined_at: new Date().toISOString() }],
       admin_names: [user.displayName]
     }, true);
-    if (!ok) {
-      setError('Could not save to database. Check Firebase rules & internet.');
+
+    if (ok) {
+      setStatus('Room created! Taking you in...');
+      // State was already updated directly in updateSettings, UI will transition
+      setTimeout(() => setLoading(false), 1000);
+    } else {
+      setError('Could not save to database. Open DevTools console for details.');
+      setStatus('');
       setLoading(false);
     }
-    // On success, onSnapshot fires and isCreatorSetup becomes false — UI auto-transitions.
   };
 
   const handleJoin = async (e) => {
@@ -529,6 +550,7 @@ function CreateRoomView({ user, onCreate, logout }) {
   const [betAmount, setBetAmount] = React.useState(50);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [status, setStatus] = React.useState('');
 
   const BET_PRESETS = [10, 25, 50, 100, 200];
 
@@ -537,7 +559,7 @@ function CreateRoomView({ user, onCreate, logout }) {
     if (!squadName.trim()) return setError('Please enter a squad name.');
     if (!inviteCode.trim() || inviteCode.includes(' ')) return setError('Invite code cannot be empty or have spaces.');
     if (betAmount < 1) return setError('Bet amount must be at least ₹1.');
-    onCreate(squadName.trim(), inviteCode.trim(), betAmount, setLoading, setError);
+    onCreate(squadName.trim(), inviteCode.trim(), betAmount, setLoading, setError, setStatus);
   };
 
   return (
@@ -635,6 +657,13 @@ function CreateRoomView({ user, onCreate, logout }) {
               <div>💰 ₹<strong>{betAmount}</strong> per match</div>
               <div>🎟️ Code: <strong style={{ color: 'var(--orange)' }}>{inviteCode || '—'}</strong></div>
             </div>
+
+            {/* Status */}
+            {status && !error && (
+              <div style={{ background: '#f0fff4', border: '2px solid #22c55e', borderRadius: '10px', padding: '0.75rem', color: '#166534', fontWeight: 700, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⚙️</span> {status}
+              </div>
+            )}
 
             {/* Error */}
             {error && (
