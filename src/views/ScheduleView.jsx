@@ -15,6 +15,7 @@ function AddMatchModal({ onClose, onAdd }) {
   const [minute, setMinute] = useState('30');
   const [ampm,   setAmpm]   = useState('PM');
   const [saving, setSaving] = useState(false);
+  const [isCustomTeams, setIsCustomTeams] = useState(false);
 
   const handleSubmit = async () => {
     if (!team1 || !team2 || !day || team1 === team2) {
@@ -46,20 +47,45 @@ function AddMatchModal({ onClose, onAdd }) {
 
         {/* Team 1 */}
         <div style={{ marginBottom: '1rem' }}>
-          <label style={labelStyle}>TEAM 1</label>
-          <select value={team1} onChange={e => { setTeam1(e.target.value); setTeam2(''); }} style={selectStyle}>
-            <option value="">Select a team…</option>
-            {IPL_TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '0.35rem' }}>
+            <label style={{...labelStyle, marginBottom: 0}}>TEAM 1</label>
+            <button onClick={() => { setIsCustomTeams(!isCustomTeams); setTeam1(''); setTeam2(''); }} style={{ background: 'none', border: 'none', color: 'var(--teal)', fontSize: '0.7rem', fontWeight: 800, textDecoration: 'underline', cursor: 'pointer' }}>
+              {isCustomTeams ? 'Pick IPL Team' : 'Type Custom Name'}
+            </button>
+          </div>
+          {isCustomTeams ? (
+            <input
+              type="text"
+              value={team1}
+              onChange={e => setTeam1(e.target.value)}
+              style={selectStyle}
+              placeholder="e.g. Local Superstars..."
+            />
+          ) : (
+            <select value={team1} onChange={e => { setTeam1(e.target.value); setTeam2(''); }} style={selectStyle}>
+              <option value="">Select a team…</option>
+              {IPL_TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
         </div>
 
         {/* Team 2 */}
         <div style={{ marginBottom: '1.25rem' }}>
           <label style={labelStyle}>TEAM 2</label>
-          <select value={team2} onChange={e => setTeam2(e.target.value)} style={{ ...selectStyle, opacity: !team1 ? 0.5 : 1 }} disabled={!team1}>
-            <option value="">Select a team…</option>
-            {team2Opts.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          {isCustomTeams ? (
+            <input
+              type="text"
+              value={team2}
+              onChange={e => setTeam2(e.target.value)}
+              style={selectStyle}
+              placeholder="e.g. Backyard Boys..."
+            />
+          ) : (
+            <select value={team2} onChange={e => setTeam2(e.target.value)} style={{ ...selectStyle, opacity: !team1 ? 0.5 : 1 }} disabled={!team1}>
+              <option value="">Select a team…</option>
+              {team2Opts.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          )}
         </div>
 
         {/* Date row */}
@@ -127,8 +153,25 @@ function AddMatchModal({ onClose, onAdd }) {
   );
 }
 
-export default function ScheduleView({ isAdmin, onAddMatch }) {
+function SettleModal({ match, onClose, onConfirm }) {
+  return (
+    <div className="modal-overlay fade-in" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+       <div className="glass-card" style={{ background: '#FFFBF0', padding: '1.5rem', width: '90%', maxWidth: '350px' }}>
+          <h3 style={{ fontFamily: "'Baloo 2', sans-serif", fontSize: '1.2rem', marginBottom: '1rem', textAlign: 'center' }}>Confirm Winner 🏆</h3>
+          <p style={{ textAlign: 'center', fontSize: '0.85rem', marginBottom: '1.5rem', opacity: 0.8 }}>Choose the winning team for:<br/><strong>{match.fixture}</strong></p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+             <button className="btn-primary" style={{ padding: '0.6rem' }} onClick={() => onConfirm(match.teams[0])}>🏅 {match.teams[0]}</button>
+             <button className="btn-primary" style={{ padding: '0.6rem' }} onClick={() => onConfirm(match.teams[1])}>🏅 {match.teams[1]}</button>
+             <button className="btn-primary" style={{ background: 'transparent', color: 'var(--muted)', marginTop: '0.5rem', boxShadow: 'none' }} onClick={onClose}>Cancel</button>
+          </div>
+       </div>
+    </div>
+  )
+}
+
+export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchResults, onSettle, onDeleteMatch }) {
   const [showModal, setShowModal] = useState(false);
+  const [settlingMatch, setSettlingMatch] = useState(null);
   const now      = new Date();
   const todayStr = format(now, 'MMMM d');
   const scrollRef = React.useRef(null);
@@ -160,20 +203,27 @@ export default function ScheduleView({ isAdmin, onAddMatch }) {
           onAdd={async (data) => { await onAddMatch(data); setShowModal(false); }}
         />
       )}
+      {settlingMatch && <SettleModal match={settlingMatch} onClose={() => setSettlingMatch(null)} onConfirm={(winner) => {
+         const existingResult = matchResults.find(r => r.match_id === settlingMatch.id);
+         onSettle(settlingMatch.id, winner, existingResult?.id);
+         setSettlingMatch(null);
+      }} />}
 
       <div className="schedule-list">
-        {IPL_SCHEDULE.map((m, index) => {
+        {allMatches.map((m, index) => {
           const matchDate  = parse(`${m.date} 2026 ${m.time}`, 'MMMM d yyyy h:mm a', new Date());
           const isPast     = isBefore(matchDate, now);
           const isToday    = m.date === todayStr;
           const isNextFirst = !isPast && (
             index === 0 ||
-            isBefore(parse(`${IPL_SCHEDULE[index - 1].date} 2026 ${IPL_SCHEDULE[index - 1].time}`, 'MMMM d yyyy h:mm a', new Date()), now)
+            isBefore(parse(`${allMatches[index - 1].date} 2026 ${allMatches[index - 1].time}`, 'MMMM d yyyy h:mm a', new Date()), now)
           );
+          
+          const result = matchResults.find(r => r.match_id === m.id);
 
           return (
             <div
-              key={m.num}
+              key={m.id}
               ref={isNextFirst ? scrollRef : null}
               className="schedule-card"
               style={{
@@ -186,7 +236,7 @@ export default function ScheduleView({ isAdmin, onAddMatch }) {
               <div className="schedule-info">
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <span className="match-num-badge" style={{ background: isPast ? 'var(--border)' : 'var(--yellow)' }}>
-                    MATCH {m.num}
+                    {m.is_custom ? 'CUSTOM MATCH' : `MATCH ${m.num}`}
                   </span>
                   {isToday && (
                     <span style={{ background: 'var(--orange)', color: 'white', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
@@ -201,8 +251,40 @@ export default function ScheduleView({ isAdmin, onAddMatch }) {
                     </span>
                   )}
                 </div>
-                <h5 style={{ color: isPast ? 'var(--muted)' : 'inherit' }}>{m.fixture}</h5>
+                <h5 style={{ color: isPast ? 'var(--muted)' : 'inherit', display: 'flex', alignItems: 'center' }}>
+                  {m.fixture}
+                  {isAdmin && m.is_custom && (
+                    <button 
+                      onClick={() => onDeleteMatch(m.id)} 
+                      style={{ background: 'none', border: 'none', color: 'var(--error)', cursor: 'pointer', marginLeft: 'auto', fontSize: '0.9rem' }}
+                      title="Delete Match"
+                    >
+                      🗑️
+                    </button>
+                  )}
+                </h5>
                 <p>{m.date} · {m.time}</p>
+                
+                {result && (
+                  <div style={{ marginTop: '0.5rem', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <div style={{ display: 'inline-block', background: 'var(--yellow)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>
+                      🏆 {result.winner_team} WON
+                    </div>
+                    {isAdmin && (
+                      <button style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '0.65rem', fontWeight: 800, textDecoration: 'underline', cursor: 'pointer' }} onClick={() => setSettlingMatch(m)}>
+                         Change
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {isAdmin && isPast && !result && m.teams && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <button className="btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.65rem', width: '100%', border: '2px solid var(--dark)', background: '#fff', color: 'var(--dark)' }} onClick={() => setSettlingMatch(m)}>
+                       🏅 SETTLE MATCH
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           );

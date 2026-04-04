@@ -13,11 +13,12 @@ import {
   finalizeWinner as finalizeWinnerService,
   overrideMatchResult as overrideMatchResultService,
   shareLink as shareLinkService,
+  deleteMatch as deleteMatchService,
 } from '../services/firestoreService';
 
 // Models
 import { computeActiveMatches, computeSquadStats, computeUserStats } from '../models/statsModel';
-import { BET_AMOUNT } from '../models/constants';
+import { BET_AMOUNT, IPL_SCHEDULE } from '../models/constants';
 
 /**
  * useAppController
@@ -60,6 +61,20 @@ export function useAppController() {
 
   // ─── DERIVED STATE (MODELS) ──────────────────────────────────────────────────
 
+  const allMatches = useMemo(() => {
+    return [
+      ...IPL_SCHEDULE.map(m => ({ ...m, id: `ipl-2025-${m.num}` })),
+      ...customMatches,
+    ].map(m => {
+      if (!m.teams) {
+        const [t1, t2] = m.fixture.split(' vs ');
+        return { ...m, teams: [t1, t2] };
+      }
+      return m;
+    })
+    .sort((a, b) => parse(`${a.date} 2026 ${a.time}`, 'MMMM d yyyy h:mm a', new Date()) - parse(`${b.date} 2026 ${b.time}`, 'MMMM d yyyy h:mm a', new Date()));
+  }, [customMatches]);
+  
   const activeMatches = useMemo(
     () => computeActiveMatches(customMatches, tick),
     [customMatches, tick]
@@ -107,8 +122,12 @@ export function useAppController() {
     await uploadScheduleService();
   };
 
-  const handleFinalizeWinner = async (matchId, winner) => {
-    await finalizeWinnerService(matchId, winner);
+  const handleFinalizeWinner = async (matchId, winner, existingResultId) => {
+    await finalizeWinnerService(matchId, winner, existingResultId);
+  };
+
+  const handleDeleteMatch = async (matchId) => {
+    await deleteMatchService(matchId);
   };
 
   const handleOverrideResult = async (matchId, winner) => {
@@ -143,6 +162,7 @@ export function useAppController() {
     // data
     votes,
     matchResults,
+    allMatches,
     activeMatches,
     squadStats,
     userStats,
@@ -154,6 +174,7 @@ export function useAppController() {
     handleUploadSchedule,
     handleFinalizeWinner,
     handleOverrideResult,
+    handleDeleteMatch,
     handleShare,
   };
 }

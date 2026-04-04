@@ -4,17 +4,17 @@ import React from 'react';
 import { useAppController } from './controllers/useAppController';
 
 // Views
-import LoginView   from './views/LoginView';
-import HomeView    from './views/HomeView';
-import BetView     from './views/BetView';
+import LoginView    from './views/LoginView';
+import HomeView     from './views/HomeView';
+import BetView      from './views/BetView';
 import ScheduleView from './views/ScheduleView';
-import RanksView   from './views/RanksView';
-import ProfileView from './views/ProfileView';
-import HistoryView from './views/HistoryView';
-import BottomNav   from './views/BottomNav';
+import RanksView    from './views/RanksView';
+import ProfileView  from './views/ProfileView';
+import HistoryView  from './views/HistoryView';
+import BottomNav    from './views/BottomNav';
 
 export default function App() {
-    const {
+  const {
     // auth
     user,
     loading,
@@ -31,6 +31,7 @@ export default function App() {
     // data
     votes,
     matchResults,
+    allMatches,
     activeMatches,
     squadStats,
     userStats,
@@ -41,6 +42,7 @@ export default function App() {
     handleUploadSchedule,
     handleFinalizeWinner,
     handleOverrideResult,
+    handleDeleteMatch,
     handleShare,
   } = useAppController();
 
@@ -66,7 +68,14 @@ export default function App() {
         ) : (
           <>
             {activeTab === 'home' && (
-              <HomeView user={user} stats={userStats} onShare={handleShare} />
+              <HomeView
+                user={user}
+                stats={userStats}
+                onShare={handleShare}
+                votes={votes}
+                matchResults={matchResults}
+                allMatches={allMatches}
+              />
             )}
 
             {activeTab === 'bet' && (
@@ -80,7 +89,14 @@ export default function App() {
             )}
 
             {activeTab === 'matches' && (
-              <ScheduleView isAdmin={isAdmin} onAddMatch={handleAddCustomMatch} />
+              <ScheduleView
+                isAdmin={isAdmin}
+                onAddMatch={handleAddCustomMatch}
+                allMatches={allMatches}
+                matchResults={matchResults}
+                onSettle={handleFinalizeWinner}
+                onDeleteMatch={handleDeleteMatch}
+              />
             )}
 
             {activeTab === 'ranks' && (
