@@ -53,11 +53,14 @@ export function useAppController() {
 
   // 3. Real-time Firestore subscriptions
   useEffect(() => {
+    if (!user) return; // Wait until the user is authenticated
+
     const unsubVotes   = subscribeVotes(setVotes);
     const unsubResults = subscribeResults(setMatchResults);
     const unsubMatches = subscribeCustomMatches(setCustomMatches);
+    
     return () => { unsubVotes(); unsubResults(); unsubMatches(); };
-  }, []);
+  }, [user]);
 
   // ─── DERIVED STATE (MODELS) ──────────────────────────────────────────────────
 

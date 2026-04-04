@@ -2,13 +2,27 @@ import React from 'react';
 
 export default function LoginView({ login }) {
   return (
-    <div className="login-wrap fade-in">
-      <div className="login-card">
+    <div className="login-wrap fade-in" style={{ position: 'relative', height: '100vh', width: '100vw', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      {/* FULL SCREEN BACKGROUND POSTER */}
+      <div style={{ position: 'absolute', inset: 0, zIndex: -1 }}>
+        <img 
+          src="/bg_poster.jpeg" 
+          alt="Rivalry Background" 
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+        />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.7))' }}></div>
+      </div>
+
+      <div className="login-card" style={{ 
+        overflow: 'hidden' 
+      }}>
 
         {/* BANNER */}
-        <div className="login-banner card-banner">
-          <div className="logo">ChaiBet 🍵</div>
-          <div className="banner-sub">IPL bets with your actual friends</div>
+        <div className="login-banner" style={{ 
+          height: '140px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: 'white' 
+        }}>
+          <div className="logo" style={{ textShadow: '2px 2px 0 var(--dark)' }}>ChaiBet 🍵</div>
+          <div className="banner-sub">The Ultimate Rivalry</div>
         </div>
 
         {/* BODY */}
@@ -33,7 +47,7 @@ export default function LoginView({ login }) {
         </div>
 
         {/* CARD FOOTER */}
-        <div className="login-footer">
+        <div className="login-footer" style={{ background: 'transparent' }}>
           <div className="login-footer-text">18+ only · Play responsibly</div>
         </div>
 

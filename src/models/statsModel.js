@@ -66,19 +66,25 @@ export function computeSquadStats(votes, matchResults) {
   latestByMatch.forEach(res => {
     const { match_id: matchId, winner_team: winner } = res;
     const mVotes = votes.filter(v => v.match_id === matchId);
-    if (mVotes.length === 0) return;
+    
+    const allMembers = Object.keys(stats);
+    if (allMembers.length === 0) return;
 
-    const pot          = mVotes.length * BET_AMOUNT;
     const winnersCount = mVotes.filter(v => v.chosen_team === winner).length;
 
-    if (winnersCount > 0 && winnersCount < mVotes.length) {
+    if (winnersCount > 0) {
+      // Automatically cash in 10rs from EVERY known member ONLY if someone won!
+      allMembers.forEach(userName => {
+        stats[userName].earnings -= BET_AMOUNT;
+      });
+
+      const pot = allMembers.length * BET_AMOUNT;
       const individualPayout = Math.floor(pot / winnersCount);
       mVotes.forEach(v => {
         if (v.chosen_team === winner) {
-          stats[v.user_name].wins     += 1;
-          stats[v.user_name].earnings += (individualPayout - BET_AMOUNT);
-        } else {
-          stats[v.user_name].earnings -= BET_AMOUNT;
+          stats[v.user_name].wins += 1;
+          // Add the equal division back to the winner (they already paid the 10rs fee above)
+          stats[v.user_name].earnings += individualPayout;
         }
       });
     }

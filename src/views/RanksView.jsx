@@ -7,7 +7,16 @@ export default function RanksView({ squadStats, onViewHistory }) {
 
   return (
     <div className="fade-in">
-      <h3 style={{ fontFamily: "'Baloo 2', sans-serif", marginBottom: '1rem' }}>SQUAD RANKS 🏆</h3>
+      <div style={{ position: 'relative', marginBottom: '1.5rem', borderRadius: '16px', overflow: 'hidden', height: '160px', border: '3px solid var(--border)' }}>
+        <img 
+          src="/squad_photo.png" 
+          alt="Squad at Match" 
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+        />
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.85))', padding: '1rem', color: 'white' }}>
+          <h3 style={{ fontFamily: "'Baloo 2', sans-serif", margin: 0, textShadow: '2px 2px 0 var(--dark)' }}>SQUAD RANKS 🏆</h3>
+        </div>
+      </div>
       <div className="glass-card" style={{ padding: '1rem' }}>
         {sorted.map((name, i) => (
           <div

@@ -50,8 +50,14 @@ export default function App() {
 
   return (
     <>
-      <div className="bg-doodle doodle-1">🏏</div>
-      <div className="bg-doodle doodle-4">🏆</div>
+      <div style={{ position: 'fixed', inset: 0, zIndex: -1, overflow: 'hidden' }}>
+        <img 
+          src="/bg_poster.jpeg" 
+          alt="Rivalry Background" 
+          style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.15 }} 
+        />
+        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(rgba(255,255,255,0.7), #f4f4f4)' }}></div>
+      </div>
 
       <div className="app-container">
         {!user ? (
@@ -62,6 +68,7 @@ export default function App() {
             userName={viewingHistoryFor}
             votes={votes}
             matchResults={matchResults}
+            allMatches={allMatches}
             onClose={() => setViewingHistoryFor(null)}
           />
 
