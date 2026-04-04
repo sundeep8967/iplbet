@@ -19,34 +19,33 @@
 import { createRequire }          from 'module';
 import { readFileSync, existsSync } from 'fs';
 import { parse, isBefore, addHours } from 'date-fns';
-
+import { GoogleAuth } from 'google-auth-library';
 import { scrapeMatchResult } from './scrapeMatchResult.js';
 
-// ── Firebase Admin Setup ──────────────────────────────────────────────────────
-const require = createRequire(import.meta.url);
-const admin   = require('firebase-admin');
-
+// ── Service Account & REST Setup ──────────────────────────────────────────────
 let serviceAccount;
 const localPath = new URL('./serviceAccount.json', import.meta.url).pathname;
 
 if (existsSync(localPath)) {
-  // Local dev: read from file (gitignored)
   serviceAccount = JSON.parse(readFileSync(localPath, 'utf8'));
 } else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-  // GitHub Actions: injected as a repository secret
   serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 } else {
-  console.error('❌  No Firebase credentials found.');
-  console.error('    • Locally:         add scripts/serviceAccount.json');
-  console.error('    • GitHub Actions:  add FIREBASE_SERVICE_ACCOUNT repository secret');
+  console.error('❌ No Firebase credentials found.');
   process.exit(1);
 }
 
-if (!admin.apps.length) {
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-}
+const auth = new GoogleAuth({
+  credentials: {
+    client_email: serviceAccount.client_email,
+    private_key: serviceAccount.private_key,
+  },
+  projectId: serviceAccount.project_id,
+  scopes: ['https://www.googleapis.com/auth/datastore']
+});
 
-const db = admin.firestore();
+const PROJECT_ID = serviceAccount.project_id;
+const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 
 // ── IPL Schedule (source of truth for match timing) ───────────────────────────
@@ -59,17 +58,42 @@ const HOURS_AFTER_START = 4.5;
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function getAlreadySettledMatchIds() {
-  const snap = await db.collection('match_results').get();
-  return new Set(snap.docs.map(d => d.data().match_id));
+  const client = await auth.getClient();
+  const token = await client.getAccessToken();
+  const res = await fetch(`${FIRESTORE_BASE}/match_results`, {
+    headers: { 'Authorization': `Bearer ${token.token}` }
+  });
+  if (!res.ok) return new Set();
+  const data = await res.json();
+  const ids = (data.documents || []).map(d => d.fields?.match_id?.stringValue).filter(Boolean);
+  return new Set(ids);
 }
 
 async function settleMatch(matchId, winnerTeam) {
-  await db.collection('match_results').add({
-    match_id:    matchId,
-    winner_team: winnerTeam,
-    settled_at:  new Date().toISOString(),
-    auto:        true,   // flag so you know this was auto-settled
+  const client = await auth.getClient();
+  const token = await client.getAccessToken();
+  
+  const payload = {
+    fields: {
+      match_id:    { stringValue: matchId },
+      winner_team: { stringValue: winnerTeam },
+      settled_at:  { stringValue: new Date().toISOString() },
+      auto:        { booleanValue: true }
+    }
+  };
+
+  const res = await fetch(`${FIRESTORE_BASE}/match_results`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token.token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload)
   });
+
+  if (!res.ok) {
+    throw new Error(`REST Error HTTP ${res.status}: ${await res.text()}`);
+  }
   console.log(`  ✅ Settled: ${matchId} → ${winnerTeam}`);
 }
 
