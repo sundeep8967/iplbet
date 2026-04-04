@@ -15,7 +15,7 @@ import { IPL_SCHEDULE } from '../models/constants';
 export function subscribeVotes(callback) {
   const q = query(collection(db, 'votes'), orderBy('created_at', 'desc'));
   return onSnapshot(q, snap => {
-    const allVotes = snap.docs.map(doc => doc.data());
+    const allVotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const uniqueVotesMap = new Map();
     allVotes.forEach(v => {
        const key = `${v.user_name}_${v.match_id}`;
@@ -91,6 +91,16 @@ export async function addVote(user, matchId, team) {
     created_at:   new Date().toISOString(),
   });
   console.log(`Voted successfully for ${team}!`);
+}
+
+/**
+ * Remove a vote from Firestore by document ID.
+ * @param {string} voteId
+ */
+export async function removeVote(voteId) {
+  if (!voteId) return;
+  await deleteDoc(doc(db, 'votes', voteId));
+  console.log(`Unpicked successfully!`);
 }
 
 /**

@@ -8,6 +8,7 @@ import {
   subscribeResults,
   subscribeCustomMatches,
   addVote,
+  removeVote,
   addCustomMatch as addCustomMatchService,
   uploadSchedule as uploadScheduleService,
   finalizeWinner as finalizeWinnerService,
@@ -126,9 +127,19 @@ export function useAppController() {
     }
     if (!user) return;
     try {
+      const existing = votes.find(v => v.match_id === matchId && v.user_name === user.displayName);
+      if (existing && existing.chosen_team === team) {
+        // Same team clicked again -> Un-pick (remove from Firestore)
+        await removeVote(existing.id);
+        alert(`Unpicked ${team}!`);
+        return;
+      }
       await addVote(user, matchId, team);
       alert(`Voted for ${team}!`);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      alert('Action failed. Please try again.');
+    }
   };
 
   const handleAddCustomMatch = async (data) => {
