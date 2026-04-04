@@ -1,16 +1,17 @@
 @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Space+Grotesk:wght@400;500;600&display=swap');
 
 :root {
-  --bg: #FFFBF0;
-  --card: #FFFFFF;
-  --orange: #FF6B2B;
-  --yellow: #FFD23F;
-  --teal: #0BBFAB;
-  --blue: #3D5BFF;
-  --dark: #1A1523;
-  --muted: #7A7490;
-  --border: #E8E2D5;
-  --error: #FF3DA0;
+  --bg: #09090b;
+  --card: #18181b;
+  --orange: #3b82f6; /* Blue 500 */
+  --yellow: #1e3a8a; /* Blue 900 */
+  --teal: #10b981;
+  --blue: #60a5fa;
+  --dark: #27272a; /* Zinc 800 */
+  --muted: #a1a1aa;
+  --border: #3f3f46;
+  --error: #ef4444;
+  --text: #f8fafc;
 }
 
 * {
@@ -23,7 +24,7 @@ body {
   min-height: 100vh;
   background: var(--bg);
   font-family: 'Space Grotesk', sans-serif;
-  color: var(--dark);
+  color: var(--text);
   position: relative;
   overflow-x: hidden;
 }
@@ -111,7 +112,7 @@ body {
   font-family: 'Baloo 2', sans-serif;
   font-weight: 800;
   font-size: 2.2rem;
-  color: #fff;
+  color: var(--text);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -188,8 +189,8 @@ body {
   width: 100%;
   padding: 0.9rem;
   background: var(--orange);
-  color: #fff;
-  border: 2.5px solid var(--dark);
+  color: var(--text);
+  border: 2.5px solid var(--border);
   border-radius: 14px;
   font-family: 'Baloo 2', sans-serif;
   font-weight: 800;
@@ -305,8 +306,8 @@ body {
   left: 0;
   right: 0;
   height: 85px;
-  background: white;
-  border-top: 3.5px solid var(--dark);
+  background: var(--card);
+  border-top: 3.5px solid var(--border);
   display: flex;
   justify-content: space-around;
   align-items: center;
@@ -385,8 +386,8 @@ body {
 }
 
 .schedule-card {
-  background: white;
-  border: 2px solid var(--dark);
+  background: var(--card);
+  border: 2px solid var(--border);
   border-radius: 16px;
   padding: 1rem;
   display: flex;
@@ -443,14 +444,14 @@ body {
 
 .members-row {
   display: flex; align-items: center; gap: 0.6rem;
-  background: #FFFBF0; border: 1.5px dashed var(--border);
+  background: var(--bg); border: 1.5px dashed var(--border);
   border-radius: 12px; padding: 0.7rem 1rem;
   margin-bottom: 1.6rem;
 }
 .member-avatars { display: flex; }
 .m-av {
   width: 28px; height: 28px; border-radius: 50%;
-  border: 2px solid #fff; margin-left: -8px;
+  border: 2px solid var(--border); margin-left: -8px;
   display: flex; align-items: center; justify-content: center;
   font-size: 0.85rem; background: var(--card);
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -483,8 +484,8 @@ body {
 }
 .input-wrap input:focus {
   border-color: var(--orange);
-  background: #fff;
-  box-shadow: 3px 3px 0 rgba(255,107,43,0.15);
+  background: var(--card);
+  box-shadow: 3px 3px 0 rgba(59,130,246,0.15);
 }
 .input-wrap input::placeholder { color: var(--border); font-weight: 500; }
 
@@ -512,7 +513,7 @@ body {
 
 .login-footer {
   padding: 1rem 2rem;
-  background: #FFFBF0;
+  background: var(--bg);
   border-top: 1.5px dashed var(--border);
   text-align: center;
 }

@@ -78,7 +78,7 @@ export default function App() {
   const [matchResults, setMatchResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
-
+  const [viewingHistoryFor, setViewingHistoryFor] = useState(null);
   
   const BET_AMOUNT = 10;
 
@@ -254,6 +254,13 @@ export default function App() {
       <div className="app-container">
         {!user ? (
           <LoginView login={() => signInWithPopup(auth, googleProvider)} />
+        ) : viewingHistoryFor ? (
+          <HistoryView 
+            userName={viewingHistoryFor} 
+            votes={votes} 
+            matchResults={matchResults} 
+            onClose={() => setViewingHistoryFor(null)} 
+          />
         ) : (
           <>
             {activeTab === 'home' && <HomeView user={user} stats={userStats} onShare={shareLink} />}
@@ -267,7 +274,7 @@ export default function App() {
               />
             )}
             {activeTab === 'matches' && <ScheduleView isAdmin={isAdmin} onAddMatch={addCustomMatch} />}
-            {activeTab === 'ranks' && <RanksView squadStats={squadStats} />}
+            {activeTab === 'ranks' && <RanksView squadStats={squadStats} onViewHistory={setViewingHistoryFor} />}
             {activeTab === 'profile' && (
               <ProfileView 
                 user={user} 
@@ -277,6 +284,7 @@ export default function App() {
                 activeMatches={activeMatches}
                 isAdmin={isAdmin}
                 addCustomMatch={addCustomMatch}
+                onViewHistory={() => setViewingHistoryFor(user.displayName)}
               />
             )}
 
@@ -391,13 +399,19 @@ function MatchTimer({ match }) {
 }
 
 function BetView({ matches, votes, squadStats, user, handleVote }) {
+  const [showAll, setShowAll] = React.useState(false);
+
+  // Group matches by the first available date
+  const firstDate = matches.length > 0 ? matches[0].date : null;
+  const displayedMatches = (showAll || !firstDate) ? matches : matches.filter(m => m.date === firstDate);
+  const otherMatchesCount = matches.length - displayedMatches.length;
   return (
     <div className="fade-in">
       <h3 style={{ fontFamily: "'Baloo 2', sans-serif", marginBottom: '1.5rem' }}>NEXT DAYS PICKS 🏏</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        {matches.length === 0 ? (
+        {displayedMatches.length === 0 ? (
           <p style={{ textAlign: 'center', opacity: 0.5 }}>No matches open for betting right now. Check back tomorrow!</p>
-        ) : matches.map(m => {
+        ) : displayedMatches.map(m => {
           const matchVotes = votes.filter(v => v.match_id === m.id);
           
           // Build squad members list from all users who have voted (any match)
@@ -432,15 +446,15 @@ function BetView({ matches, votes, squadStats, user, handleVote }) {
                          const uv = matchVotes.find(v => v.user_name === member.name);
                          return uv && uv.chosen_team === m.teams[0];
                       }).map(member => (
-                          <div key={member.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background: 'white', border: '2px solid var(--dark)', borderRadius: '10px', boxShadow: '2px 2px 0 var(--teal)' }}>
-                            <img src={member.photo} style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid var(--dark)' }} referrerPolicy="no-referrer" />
+                          <div key={member.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background: 'var(--card)', border: '2px solid var(--border)', borderRadius: '10px', boxShadow: 'none' }}>
+                            <img src={member.photo} style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid var(--border)' }} referrerPolicy="no-referrer" />
                             <div style={{ fontSize: '0.65rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.name.split(' ')[0]}</div>
                           </div>
                       ))}
                     </div>
                   </div>
 
-                  <div style={{ fontSize: '0.8rem', fontWeight: 900, opacity: 0.2, marginTop: '40px' }}>VS</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 900, opacity: 0.2, margin: 'auto 0px' }}>VS</div>
                   
                   {/* TEAM 2 COLUMN */}
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -453,8 +467,8 @@ function BetView({ matches, votes, squadStats, user, handleVote }) {
                          const uv = matchVotes.find(v => v.user_name === member.name);
                          return uv && uv.chosen_team === m.teams[1];
                       }).map(member => (
-                          <div key={member.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background: 'white', border: '2px solid var(--dark)', borderRadius: '10px', boxShadow: '2px 2px 0 var(--orange)' }}>
-                            <img src={member.photo} style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid var(--dark)' }} referrerPolicy="no-referrer" />
+                          <div key={member.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background: 'var(--card)', border: '2px solid var(--border)', borderRadius: '10px', boxShadow: 'none' }}>
+                            <img src={member.photo} style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid var(--border)' }} referrerPolicy="no-referrer" />
                             <div style={{ fontSize: '0.65rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.name.split(' ')[0]}</div>
                           </div>
                       ))}
@@ -485,6 +499,16 @@ function BetView({ matches, votes, squadStats, user, handleVote }) {
           );
         })}
       </div>
+      
+      {!showAll && otherMatchesCount > 0 && (
+        <button 
+          onClick={() => setShowAll(true)} 
+          className="btn-primary" 
+          style={{ marginTop: '1.5rem', background: 'var(--card)', color: 'var(--text)' }}
+        >
+          View More Upcoming Matches ({otherMatchesCount})
+        </button>
+      )}
     </div>
   );
 }
@@ -647,7 +671,7 @@ function ScheduleView({ isAdmin, onAddMatch }) {
               className="schedule-card"
               style={{
                 borderColor: isPast ? 'var(--error)' : 'var(--teal)',
-                background: isPast ? '#FFF0F5' : '#F0FFF7',
+                background: isPast ? 'var(--bg)' : 'var(--card)',
                 borderWidth: isToday ? '3px' : '2px',
                 opacity: isPast ? 0.7 : 1
               }}
@@ -672,20 +696,25 @@ function ScheduleView({ isAdmin, onAddMatch }) {
   );
 }
 
-function RanksView({ squadStats }) {
+function RanksView({ squadStats, onViewHistory }) {
   const sorted = Object.keys(squadStats).sort((a, b) => squadStats[b].earnings - squadStats[a].earnings);
   return (
     <div className="fade-in">
        <h3 style={{ fontFamily: "'Baloo 2', sans-serif", marginBottom: '1rem' }}>SQUAD RANKS 🏆</h3>
        <div className="glass-card" style={{ padding: '1rem' }}>
           {sorted.map((name, i) => (
-            <div key={name} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1.5px dashed var(--border)' }}>
+            <div key={name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1.5px dashed var(--border)' }}>
                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                   <div style={{ fontWeight: 800, color: i < 3 ? 'var(--orange)' : 'var(--muted)' }}>#{i+1}</div>
                   <div style={{ fontWeight: 700 }}>{name}</div>
                </div>
-               <div style={{ fontWeight: 800, color: squadStats[name].earnings >= 0 ? 'var(--teal)' : 'var(--error)' }}>
-                ₹{squadStats[name].earnings}
+               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                 <div style={{ fontWeight: 800, color: squadStats[name].earnings >= 0 ? 'var(--teal)' : 'var(--error)' }}>
+                  ₹{squadStats[name].earnings}
+                 </div>
+                 <button style={{ background: 'var(--bg)', color: 'var(--dark)', border: '2px solid var(--dark)', borderRadius: '8px', padding: '4px 8px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', boxShadow: '2px 2px 0 var(--dark)' }} onClick={() => onViewHistory(name)}>
+                   History
+                 </button>
                </div>
             </div>
           ))}
@@ -694,7 +723,7 @@ function RanksView({ squadStats }) {
   );
 }
 
-function ProfileView({ user, logout, onSync, onSettle, activeMatches, isAdmin, addCustomMatch }) {
+function ProfileView({ user, logout, onSync, onSettle, activeMatches, isAdmin, addCustomMatch, onViewHistory }) {
   return (
     <div className="fade-in" style={{ textAlign: 'center' }}>
        <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -702,11 +731,15 @@ function ProfileView({ user, logout, onSync, onSettle, activeMatches, isAdmin, a
          {isAdmin && <div style={{ position: 'absolute', bottom: '15px', right: '-10px', background: 'var(--teal)', color: 'white', fontSize: '0.6rem', padding: '3px 6px', borderRadius: '8px', fontWeight: 900, border: '2px solid var(--dark)' }}>ADMIN</div>}
        </div>
        <h3 style={{ fontFamily: "'Baloo 2', sans-serif" }}>{user.displayName}</h3>
-       <p style={{ opacity: 0.6, fontSize: '0.85rem', marginBottom: '2rem' }}>{user.email}</p>
+       <p style={{ opacity: 0.6, fontSize: '0.85rem', marginBottom: '1rem' }}>{user.email}</p>
+
+       <button className="btn-primary" style={{ background: 'var(--teal)', marginBottom: '2rem' }} onClick={onViewHistory}>
+         My Bet History 📜
+       </button>
        
        {isAdmin && (
-         <div className="glass-card fade-in" style={{ textAlign: 'left', padding: '1.5rem', marginBottom: '1.5rem', background: '#FFFBF0' }}>
-            <h4 style={{ fontFamily: "'Baloo 2', sans-serif", borderBottom: '2.5px dashed var(--dark)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--orange)' }}>
+         <div className="glass-card fade-in" style={{ textAlign: 'left', padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--bg)' }}>
+            <h4 style={{ fontFamily: "'Baloo 2', sans-serif", borderBottom: '2.5px dashed var(--border)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--orange)' }}>
               👑 ADMIN DASHBOARD
             </h4>
 
@@ -721,7 +754,7 @@ function ProfileView({ user, logout, onSync, onSettle, activeMatches, isAdmin, a
             <div>
               <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.5rem' }}>SETTLE RECENT MATCHES:</p>
               {activeMatches.map(m => (
-                <button key={m.id} className="btn-primary" style={{ fontSize: '0.7rem', height: '35px', marginBottom: '5px', background: 'white', color: 'var(--dark)' }} onClick={() => onSettle(m.id, prompt(`Winner of ${m.fixture}?`))}>
+                <button key={m.id} className="btn-primary" style={{ fontSize: '0.7rem', height: '35px', marginBottom: '5px', background: 'var(--bg)', color: 'var(--text)' }} onClick={() => onSettle(m.id, prompt(`Winner of ${m.fixture}?`))}>
                   Settle {m.num}
                 </button>
               ))}
@@ -730,7 +763,7 @@ function ProfileView({ user, logout, onSync, onSettle, activeMatches, isAdmin, a
          </div>
        )}
 
-       <button className="btn-primary" onClick={logout} style={{ background: 'var(--dark)' }}>Log Out 👋</button>
+       <button className="btn-primary" onClick={logout} style={{ background: 'var(--card)' }}>Log Out 👋</button>
     </div>
   );
 }
@@ -745,5 +778,57 @@ function BottomNav({ activeTab, setActiveTab }) {
       <div className={`nav-tab ${activeTab === 'ranks' ? 'active' : ''}`} onClick={() => setActiveTab('ranks')}><span className="nav-emoji">🏆</span><span className="nav-label">Ranks</span></div>
       <div className={`nav-tab ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}><span className="nav-emoji">👤</span><span className="nav-label">Profile</span></div>
     </nav>
+  );
+}
+
+function HistoryView({ userName, votes, matchResults, onClose }) {
+  const userVotes = votes.filter(v => v.user_name === userName).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+  return (
+    <div className="fade-in" style={{ paddingBottom: '2rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h3 style={{ fontFamily: "'Baloo 2', sans-serif" }}>{userName}'s Bets 📜</h3>
+        <button onClick={onClose} style={{ background: 'var(--card)', color: 'white', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          ✕
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {userVotes.length === 0 ? (
+          <p style={{ opacity: 0.5, textAlign: 'center' }}>No bets placed yet.</p>
+        ) : userVotes.map(v => {
+          const result = matchResults.find(r => r.match_id === v.match_id);
+          let statusText = 'PENDING ⏳';
+          let statusColor = 'var(--muted)';
+          
+          if (result) {
+            if (result.winner_team === v.chosen_team) {
+              statusText = 'WON ✅';
+              statusColor = 'var(--teal)';
+            } else {
+              statusText = 'LOST ❌';
+              statusColor = 'var(--error)';
+            }
+          }
+
+          const matchName = v.match_id.replace('ipl-2025-', 'Match ');
+          const matchObj = IPL_SCHEDULE.find(m => 'ipl-2025-' + m.num === v.match_id);
+          const fixture = matchObj ? matchObj.fixture : '';
+
+          return (
+            <div key={v.match_id} className="glass-card" style={{ padding: '1rem', borderLeft: `6px solid ${statusColor}` }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.2rem' }}>
+                <span style={{ fontWeight: 800, fontSize: '0.8rem' }}>{matchName}</span>
+                <span style={{ fontWeight: 800, fontSize: '0.8rem', color: statusColor }}>{statusText}</span>
+              </div>
+              {fixture && <div style={{ fontSize: '0.75rem', fontWeight: 600, opacity: 0.7, marginBottom: '0.6rem' }}>{fixture}</div>}
+              <div style={{ fontSize: '0.9rem' }}>
+                Picked: <strong>{v.chosen_team}</strong>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
