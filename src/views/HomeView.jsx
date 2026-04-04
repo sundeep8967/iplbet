@@ -85,18 +85,28 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
         </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div className="glass-card" style={{ flex: 1, padding: '1rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.5rem' }}>💰</div>
-          <div style={{ fontSize: '0.7rem', fontWeight: 800 }}>PROFITS</div>
-          <div style={{ fontWeight: 800, color: stats.earnings >= 0 ? 'var(--teal)' : 'var(--error)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1.5rem' }}>
+        <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>
+          <div style={{ fontSize: '1.2rem' }}>💰</div>
+          <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Profits</div>
+          <div style={{ fontWeight: 800, fontSize: '1.1rem', color: stats.earnings >= 0 ? 'var(--teal)' : 'var(--error)' }}>
             ₹{stats.earnings}
           </div>
         </div>
-        <div className="glass-card" style={{ flex: 1, padding: '1rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '1.5rem' }}>🏆</div>
-          <div style={{ fontSize: '0.7rem', fontWeight: 800 }}>TOTAL WINS</div>
-          <div style={{ fontWeight: 800 }}>{stats.wins}</div>
+        <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>
+          <div style={{ fontSize: '1.2rem' }}>🏆</div>
+          <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Wins</div>
+          <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{stats.wins}</div>
+        </div>
+        <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>
+          <div style={{ fontSize: '1.2rem' }}>📈</div>
+          <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Total Won</div>
+          <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--teal)' }}>₹{stats.won || 0}</div>
+        </div>
+        <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>
+          <div style={{ fontSize: '1.2rem' }}>📉</div>
+          <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Total Paid</div>
+          <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--error)' }}>₹{stats.spent || 0}</div>
         </div>
       </div>
 
