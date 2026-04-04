@@ -181,15 +181,17 @@ export default function ProfileView({
                   >
                     ✍️ Manual · Match {m.num}
                   </button>
-                  {/* Auto settle */}
-                  <button
-                    className="btn-primary"
-                    disabled={busy || state === 'done'}
-                    style={{ flex: 3, fontSize: '0.65rem', padding: '0.5rem', background: busy ? 'var(--muted)' : 'var(--orange)', transition: 'background 0.2s' }}
-                    onClick={() => handleAutoSettle(m)}
-                  >
-                    {autoLabel(m.id)}
-                  </button>
+                  {/* Auto settle (Local Dev Only) */}
+                  {import.meta.env.DEV && (
+                    <button
+                      className="btn-primary"
+                      disabled={busy || state === 'done'}
+                      style={{ flex: 3, fontSize: '0.65rem', padding: '0.5rem', background: busy ? 'var(--muted)' : 'var(--orange)', transition: 'background 0.2s' }}
+                      onClick={() => handleAutoSettle(m)}
+                    >
+                      {autoLabel(m.id)}
+                    </button>
+                  )}
                 </div>
               );
             })}

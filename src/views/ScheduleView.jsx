@@ -321,24 +321,26 @@ export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchRes
                     >
                       🏅 Manual
                     </button>
-                    {/* Auto-settle via Playwright scraper */}
-                    <button
-                      className="btn-primary"
-                      disabled={autoSettling[m.id] === 'loading' || autoSettling[m.id] === 'done'}
-                      style={{
-                        flex: 2,
-                        padding: '0.3rem 0.5rem',
-                        fontSize: '0.62rem',
-                        background: autoSettling[m.id] === 'loading' ? 'var(--muted)'
-                                  : autoSettling[m.id] === 'done'    ? 'var(--teal)'
-                                  : autoSettling[m.id] === 'not_found' ? 'var(--error)'
-                                  : 'var(--orange)',
-                        transition: 'background 0.2s',
-                      }}
-                      onClick={() => handleAutoSettle(m)}
-                    >
-                      {autoLabel(m.id)}
-                    </button>
+                    {/* Auto-settle via Playwright scraper (Local Dev Only) */}
+                    {import.meta.env.DEV && (
+                      <button
+                        className="btn-primary"
+                        disabled={autoSettling[m.id] === 'loading' || autoSettling[m.id] === 'done'}
+                        style={{
+                          flex: 2,
+                          padding: '0.3rem 0.5rem',
+                          fontSize: '0.62rem',
+                          background: autoSettling[m.id] === 'loading' ? 'var(--muted)'
+                                    : autoSettling[m.id] === 'done'    ? 'var(--teal)'
+                                    : autoSettling[m.id] === 'not_found' ? 'var(--error)'
+                                    : 'var(--orange)',
+                          transition: 'background 0.2s',
+                        }}
+                        onClick={() => handleAutoSettle(m)}
+                      >
+                        {autoLabel(m.id)}
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
