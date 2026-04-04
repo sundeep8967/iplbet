@@ -16,6 +16,7 @@ import {
   deleteMatch as deleteMatchService,
   addAdminUser as addAdminUserService,
   removeAdminUser as removeAdminUserService,
+  subscribeAdmins,
   subscribeAllUsers,
   saveUserToDatabase,
 } from '../services/firestoreService';
