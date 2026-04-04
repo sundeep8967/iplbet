@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth, googleProvider } from './firebase';
 import { signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, where } from 'firebase/firestore';
 import { Share2 } from 'lucide-react';
 import { format, isBefore, addDays, parse } from 'date-fns';
 
@@ -49,9 +49,31 @@ const IPL_SCHEDULE = [
   { num: 40, date: "April 28", time: "7:30 PM", fixture: "Punjab Kings vs Rajasthan Royals" }
 ];
 
+const IPL_TEAMS = [
+  'Chennai Super Kings',
+  'Delhi Capitals',
+  'Gujarat Titans',
+  'Kolkata Knight Riders',
+  'Lucknow Super Giants',
+  'Mumbai Indians',
+  'Punjab Kings',
+  'Rajasthan Royals',
+  'Royal Challengers Bengaluru',
+  'Sunrisers Hyderabad',
+];
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+const selectStyle = {
+  width: '100%', padding: '0.6rem 0.8rem',
+  border: '2px solid var(--dark)', borderRadius: '10px',
+  fontFamily: 'inherit', fontWeight: 700, fontSize: '0.82rem',
+  background: 'white', cursor: 'pointer', appearance: 'auto',
+};
+
 export default function App() {
   const [user, setUser] = useState(null);
-  const [activeMatches, setActiveMatches] = useState([]);
+  const [customMatches, setCustomMatches] = useState([]);
   const [votes, setVotes] = useState([]);
   const [matchResults, setMatchResults] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,22 +91,10 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Filtered Match Detection — shows upcoming matches within next 2 days
+  // 2. Minute tick — triggers activeMatches useMemo to refresh
+  const [tick, setTick] = useState(0);
   useEffect(() => {
-    const detectMatches = () => {
-      const now = new Date();
-      const twoDaysLater = addDays(now, 2);
-      const allUpcoming = IPL_SCHEDULE.filter(m => {
-        const matchTime = parse(`${m.date} 2026 ${m.time}`, 'MMMM d yyyy h:mm a', new Date());
-        return isBefore(now, matchTime) && isBefore(matchTime, twoDaysLater);
-      }).map(m => {
-        const [t1, t2] = m.fixture.split(' vs ');
-        return { ...m, id: `ipl-2025-${m.num}`, teams: [t1, t2] };
-      });
-      setActiveMatches(allUpcoming);
-    };
-    detectMatches();
-    const interval = setInterval(detectMatches, 60000);
+    const interval = setInterval(() => setTick(t => t + 1), 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -93,13 +103,33 @@ export default function App() {
     const vQ = query(collection(db, 'votes'), orderBy('created_at', 'desc'));
     const rQ = query(collection(db, 'match_results'), orderBy('settled_at', 'desc'));
 
+    const mQ = query(collection(db, 'matches'), where('is_custom', '==', true));
     const unsubVotes = onSnapshot(vQ, (snap) => setVotes(snap.docs.map(doc => doc.data())));
     const unsubResults = onSnapshot(rQ, (snap) => setMatchResults(snap.docs.map(doc => doc.data())));
+    const unsubMatches = onSnapshot(mQ, (snap) => setCustomMatches(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))));
 
-    return () => { unsubVotes(); unsubResults(); };
+    return () => { unsubVotes(); unsubResults(); unsubMatches(); };
   }, []);
 
-
+  // 4. Active matches — IPL schedule + custom matches, updated every minute tick
+  const activeMatches = useMemo(() => {
+    const now = new Date();
+    const twoDaysLater = addDays(now, 2);
+    const allSources = [
+      ...IPL_SCHEDULE.map(m => ({ ...m, id: `ipl-2025-${m.num}` })),
+      ...customMatches,
+    ];
+    return allSources.filter(m => {
+      const matchTime = parse(`${m.date} 2026 ${m.time}`, 'MMMM d yyyy h:mm a', new Date());
+      return isBefore(now, matchTime) && isBefore(matchTime, twoDaysLater);
+    }).map(m => {
+      if (!m.teams) {
+        const [t1, t2] = m.fixture.split(' vs ');
+        return { ...m, teams: [t1, t2] };
+      }
+      return m;
+    });
+  }, [customMatches, tick]);
 
   // 5. Shared Calculations (Memoized)
   const squadStats = useMemo(() => {
@@ -180,20 +210,14 @@ export default function App() {
   };
 
 
-  const addCustomMatch = async () => {
-    const fixture = prompt("Enter custom match teams (e.g. India vs Australia):");
-    if (!fixture) return;
-    const date = prompt("Enter date (e.g. May 1):", format(new Date(), 'MMMM d'));
-    if (!date) return;
-    
-    const [t1, t2] = fixture.split(' vs ');
-    const num = IPL_SCHEDULE.length + activeMatches.length + Math.floor(Math.random() * 100);
-    
-    await addDoc(collection(db, 'matches'), { 
-      num, date, fixture, t1, t2, 
-      time: "Evening", created_at: new Date().toISOString() 
+  const addCustomMatch = async ({ team1, team2, day, month, hour, minute, ampm }) => {
+    const fixture = `${team1} vs ${team2}`;
+    const date = `${month} ${day}`;
+    const time = `${hour}:${minute} ${ampm}`;
+    await addDoc(collection(db, 'matches'), {
+      num: Date.now(), date, fixture, t1: team1, t2: team2,
+      time, is_custom: true, created_at: new Date().toISOString()
     });
-    alert("Custom Match Added!");
   };
 
   const finalizeWinner = async (matchId, winner) => {
@@ -242,7 +266,7 @@ export default function App() {
                 handleVote={handleVote}
               />
             )}
-            {activeTab === 'matches' && <ScheduleView />}
+            {activeTab === 'matches' && <ScheduleView isAdmin={isAdmin} onAddMatch={addCustomMatch} />}
             {activeTab === 'ranks' && <RanksView squadStats={squadStats} />}
             {activeTab === 'profile' && (
               <ProfileView 
@@ -394,43 +418,68 @@ function BetView({ matches, votes, squadStats, user, handleVote }) {
                 <div style={{ fontSize: '0.7rem', fontWeight: 800 }}>{m.date} · {m.time}</div>
                 <MatchTimer match={m} />
               </div>
-              <div className="card-body" style={{ textAlign: 'center' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 800, fontSize: '0.85rem', marginBottom: '10px' }}>{m.teams[0]}</div>
-                    <button className="btn-primary" style={{ padding: '0.5rem' }} onClick={() => handleVote(m.id, m.teams[0])}>PICK</button>
-                  </div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 900, opacity: 0.2 }}>VS</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 800, fontSize: '0.85rem', marginBottom: '10px' }}>{m.teams[1]}</div>
-                    <button className="btn-primary" style={{ padding: '0.5rem' }} onClick={() => handleVote(m.id, m.teams[1])}>PICK</button>
-                  </div>
-                </div>
-                <div style={{ marginTop: '1.5rem', borderTop: '2.5px dashed var(--border)', paddingTop: '1rem', textAlign: 'left' }}>
-                  <p style={{ fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.8rem', opacity: 0.6 }}>SQUAD STATUS:</p>
-                  {squadMembers.length === 0 ? (
-                    <p style={{ fontSize: '0.75rem', opacity: 0.5 }}>Waiting for members to join...</p>
-                  ) : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))', gap: '10px' }}>
-                      {squadMembers.map(member => {
-                        const userVote = matchVotes.find(v => v.user_name === member.name);
-                        return (
-                          <div key={member.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: 'white', border: '2px solid var(--dark)', borderRadius: '12px', boxShadow: '3px 3px 0 var(--border)' }}>
-                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: userVote ? 'none' : '#F0F0F0', border: '1.5px solid var(--dark)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem' }}>
-                              {userVote ? <img src={userVote.user_photo} style={{ width: '100%', height: '100%' }} referrerPolicy="no-referrer" /> : <img src={member.photo} style={{ width: '100%', height: '100%', opacity: 0.4 }} referrerPolicy="no-referrer" />}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: '0.7rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.name.split(' ')[0]}</div>
-                              <div style={{ fontSize: '0.62rem', fontWeight: 900, color: userVote ? 'var(--orange)' : 'var(--muted)' }}>
-                                {userVote ? userVote.chosen_team : 'WAITING...'}
-                              </div>
-                            </div>
+              <div className="card-body" style={{ textAlign: 'center', paddingBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'flex-start' }}>
+                  
+                  {/* TEAM 1 COLUMN */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.85rem', marginBottom: '10px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{m.teams[0]}</div>
+                    <button className="btn-primary" style={{ padding: '0.5rem', width: '100%', marginBottom: '1rem' }} onClick={() => handleVote(m.id, m.teams[0])}>PICK</button>
+                    
+                    {/* Voters for Team 1 */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                      {squadMembers.filter(member => {
+                         const uv = matchVotes.find(v => v.user_name === member.name);
+                         return uv && uv.chosen_team === m.teams[0];
+                      }).map(member => (
+                          <div key={member.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background: 'white', border: '2px solid var(--dark)', borderRadius: '10px', boxShadow: '2px 2px 0 var(--teal)' }}>
+                            <img src={member.photo} style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid var(--dark)' }} referrerPolicy="no-referrer" />
+                            <div style={{ fontSize: '0.65rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.name.split(' ')[0]}</div>
                           </div>
-                        );
-                      })}
+                      ))}
                     </div>
-                  )}
+                  </div>
+
+                  <div style={{ fontSize: '0.8rem', fontWeight: 900, opacity: 0.2, marginTop: '40px' }}>VS</div>
+                  
+                  {/* TEAM 2 COLUMN */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.85rem', marginBottom: '10px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{m.teams[1]}</div>
+                    <button className="btn-primary" style={{ padding: '0.5rem', width: '100%', marginBottom: '1rem' }} onClick={() => handleVote(m.id, m.teams[1])}>PICK</button>
+                    
+                    {/* Voters for Team 2 */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                      {squadMembers.filter(member => {
+                         const uv = matchVotes.find(v => v.user_name === member.name);
+                         return uv && uv.chosen_team === m.teams[1];
+                      }).map(member => (
+                          <div key={member.name} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background: 'white', border: '2px solid var(--dark)', borderRadius: '10px', boxShadow: '2px 2px 0 var(--orange)' }}>
+                            <img src={member.photo} style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid var(--dark)' }} referrerPolicy="no-referrer" />
+                            <div style={{ fontSize: '0.65rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.name.split(' ')[0]}</div>
+                          </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
+
+                {/* WAITING SQUAD */}
+                {(() => {
+                  const waitingMembers = squadMembers.filter(member => !matchVotes.find(v => v.user_name === member.name));
+                  if (waitingMembers.length === 0) return null;
+                  
+                  return (
+                    <div style={{ marginTop: '1.5rem', borderTop: '2.5px dashed var(--border)', paddingTop: '1rem', textAlign: 'left' }}>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.8rem', opacity: 0.6 }}>WAITING...</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {waitingMembers.map(member => (
+                          <div key={member.name} title={member.name} style={{ width: '28px', height: '28px', borderRadius: '50%', border: '2px solid var(--muted)', overflow: 'hidden', opacity: 0.5 }}>
+                            <img src={member.photo} style={{ width: '100%', height: '100%' }} referrerPolicy="no-referrer" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           );
@@ -440,7 +489,125 @@ function BetView({ matches, votes, squadStats, user, handleVote }) {
   );
 }
 
-function ScheduleView() {
+function AddMatchModal({ onClose, onAdd }) {
+  const [team1, setTeam1] = useState('');
+  const [team2, setTeam2] = useState('');
+  const [day, setDay] = useState('');
+  const [month, setMonth] = useState('April');
+  const [hour, setHour] = useState('7');
+  const [minute, setMinute] = useState('30');
+  const [ampm, setAmpm] = useState('PM');
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!team1 || !team2 || !day || team1 === team2) {
+      alert('Please fill all fields and pick two different teams!');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onAdd({ team1, team2, day, month, hour, minute, ampm });
+      onClose();
+    } catch (e) {
+      console.error(e);
+      setSaving(false);
+    }
+  };
+
+  const team2Opts = IPL_TEAMS.filter(t => t !== team1);
+  const labelStyle = { fontSize: '0.72rem', fontWeight: 800, display: 'block', marginBottom: '0.35rem', letterSpacing: '0.05em' };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div style={{ background: 'var(--card)', borderRadius: '24px 24px 0 0', padding: '1.5rem 1.5rem 2rem', width: '100%', maxWidth: '480px', border: '3px solid var(--dark)', borderBottom: 'none', maxHeight: '92vh', overflowY: 'auto' }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <h3 style={{ fontFamily: "'Baloo 2', sans-serif", margin: 0 }}>➕ Add Custom Match</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+        </div>
+
+        {/* Team 1 */}
+        <div style={{ marginBottom: '1rem' }}>
+          <label style={labelStyle}>TEAM 1</label>
+          <select value={team1} onChange={e => { setTeam1(e.target.value); setTeam2(''); }} style={selectStyle}>
+            <option value="">Select a team…</option>
+            {IPL_TEAMS.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+
+        {/* Team 2 */}
+        <div style={{ marginBottom: '1.25rem' }}>
+          <label style={labelStyle}>TEAM 2</label>
+          <select value={team2} onChange={e => setTeam2(e.target.value)} style={{ ...selectStyle, opacity: !team1 ? 0.5 : 1 }} disabled={!team1}>
+            <option value="">Select a team…</option>
+            {team2Opts.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+
+        {/* Date row */}
+        <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1.25rem' }}>
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>DAY</label>
+            <select value={day} onChange={e => setDay(e.target.value)} style={selectStyle}>
+              <option value="">--</option>
+              {Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: 2 }}>
+            <label style={labelStyle}>MONTH</label>
+            <select value={month} onChange={e => setMonth(e.target.value)} style={selectStyle}>
+              {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: 1.2 }}>
+            <label style={labelStyle}>YEAR</label>
+            <input value="2026" disabled style={{ ...selectStyle, background: '#f0f0f0', cursor: 'not-allowed', color: 'var(--muted)' }} />
+          </div>
+        </div>
+
+        {/* Time row */}
+        <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1.5rem' }}>
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>HOUR</label>
+            <select value={hour} onChange={e => setHour(e.target.value)} style={selectStyle}>
+              {Array.from({ length: 12 }, (_, i) => i + 1).map(h => <option key={h} value={h}>{h}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>MINUTE</label>
+            <select value={minute} onChange={e => setMinute(e.target.value)} style={selectStyle}>
+              {['00','15','30','45'].map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>AM / PM</label>
+            <select value={ampm} onChange={e => setAmpm(e.target.value)} style={selectStyle}>
+              <option value="AM">AM</option>
+              <option value="PM">PM</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Preview */}
+        {team1 && team2 && day && (
+          <div style={{ background: 'var(--yellow)', border: '2px solid var(--dark)', borderRadius: '12px', padding: '0.8rem 1rem', marginBottom: '1rem', fontSize: '0.8rem', fontWeight: 700 }}>
+            📅 {team1} vs {team2}<br />
+            <span style={{ fontWeight: 500 }}>{month} {day}, 2026 · {hour}:{minute} {ampm}</span>
+          </div>
+        )}
+
+        <button className="btn-primary" onClick={handleSubmit} disabled={saving}
+          style={{ width: '100%', background: saving ? 'var(--muted)' : 'var(--teal)', fontSize: '0.9rem' }}>
+          {saving ? 'Saving…' : '✅ Add Match'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ScheduleView({ isAdmin, onAddMatch }) {
+  const [showModal, setShowModal] = useState(false);
   const now = new Date();
   const todayStr = format(now, 'MMMM d');
   const scrollRef = React.useRef(null);
@@ -453,23 +620,32 @@ function ScheduleView() {
 
   return (
     <div className="fade-in">
-      <h3 style={{ fontFamily: "'Baloo 2', sans-serif", marginBottom: '1rem' }}>IPL CALENDAR 📅</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <h3 style={{ fontFamily: "'Baloo 2', sans-serif", margin: 0 }}>IPL CALENDAR 📅</h3>
+        {isAdmin && (
+          <button className="btn-primary"
+            style={{ fontSize: '0.72rem', padding: '0.45rem 0.9rem', background: 'var(--teal)', whiteSpace: 'nowrap' }}
+            onClick={() => setShowModal(true)}>
+            + Add Match
+          </button>
+        )}
+      </div>
+
+      {showModal && <AddMatchModal onClose={() => setShowModal(false)} onAdd={async (data) => { await onAddMatch(data); setShowModal(false); }} />}
+
       <div className="schedule-list">
         {IPL_SCHEDULE.map((m, index) => {
-          // Parse match time: "April 4 3:30 PM"
           const matchDate = parse(`${m.date} 2026 ${m.time}`, 'MMMM d yyyy h:mm a', new Date());
           const isPast = isBefore(matchDate, now);
           const isToday = m.date === todayStr;
-          
-          // First upcoming or current match to scroll to
           const isNextFirst = !isPast && (index === 0 || isBefore(parse(`${IPL_SCHEDULE[index-1].date} 2026 ${IPL_SCHEDULE[index-1].time}`, 'MMMM d yyyy h:mm a', new Date()), now));
 
           return (
-            <div 
-              key={m.num} 
+            <div
+              key={m.num}
               ref={isNextFirst ? scrollRef : null}
-              className="schedule-card" 
-              style={{ 
+              className="schedule-card"
+              style={{
                 borderColor: isPast ? 'var(--error)' : 'var(--teal)',
                 background: isPast ? '#FFF0F5' : '#F0FFF7',
                 borderWidth: isToday ? '3px' : '2px',
@@ -480,8 +656,8 @@ function ScheduleView() {
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <span className="match-num-badge" style={{ background: isPast ? '#eee' : 'var(--yellow)' }}>MATCH {m.num}</span>
                   {isToday && <span style={{ background: 'var(--orange)', color: 'white', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>TODAY 🔥</span>}
-                  {isPast ? 
-                    <span style={{ color: 'var(--error)', fontSize: '0.6rem', fontWeight: 'bold' }}>● OVER</span> : 
+                  {isPast ?
+                    <span style={{ color: 'var(--error)', fontSize: '0.6rem', fontWeight: 'bold' }}>● OVER</span> :
                     <span style={{ color: 'var(--teal)', fontSize: '0.6rem', fontWeight: 'bold' }}>● {isToday ? 'LIVE / UPCOMING' : 'UPCOMING'}</span>
                   }
                 </div>
