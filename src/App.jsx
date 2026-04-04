@@ -166,6 +166,7 @@ export default function App() {
     return stats;
   }, [votes, matchResults, BET_AMOUNT]);
 
+  
   const userStats = useMemo(() => {
     const name = user?.displayName;
     if (!name || !squadStats[name]) return { wins: 0, earnings: 0 };
