@@ -1,0 +1,51 @@
+name: Auto Settle IPL Matches
+
+on:
+  # ── Scheduled runs ──────────────────────────────────────────────────────────
+  # Runs every 30 minutes from 1:30 PM UTC to 8:00 PM UTC
+  # = 7:00 PM to 1:30 AM IST — covers both afternoon (3:30 PM) and evening (7:30 PM) matches
+  schedule:
+    - cron: '0,30 13,14,15,16,17,18,19,20 * * *'
+
+  # ── Manual trigger from GitHub UI ───────────────────────────────────────────
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force re-settle already settled matches?'
+        required: false
+        default: 'false'
+
+jobs:
+  settle:
+    name: Scrape & Settle Results
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium --with-deps
+
+      - name: Run auto-settle script
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/autoSettle.js
+
+      - name: Upload run log (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: settle-error-log
+          path: |
+            npm-debug.log
+          retention-days: 7
