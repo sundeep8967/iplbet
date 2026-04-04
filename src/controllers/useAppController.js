@@ -144,8 +144,9 @@ export function useAppController() {
   const handleLogin  = () => loginWithGoogle();
   const handleLogout = () => logoutUser();
 
-  // Temporary: allow everyone to see admin panel for testing
-  const isAdmin = true;
+  // Admin check based on user email
+  const ADMIN_EMAILS = ['sundeep8967@gmail.com'];
+  const isAdmin = user && ADMIN_EMAILS.includes(user.email);
 
   // ─── PUBLIC API ─────────────────────────────────────────────────────────────
   return {

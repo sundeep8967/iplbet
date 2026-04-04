@@ -18,28 +18,42 @@ export default function RanksView({ squadStats, onViewHistory }) {
         </div>
       </div>
       <div className="glass-card" style={{ padding: '1rem' }}>
-        {sorted.map((name, i) => (
-          <div
-            key={name}
-            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1.5px dashed var(--border)' }}
-          >
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <div style={{ fontWeight: 800, color: i < 3 ? 'var(--orange)' : 'var(--muted)' }}>#{i + 1}</div>
-              <div style={{ fontWeight: 700 }}>{name}</div>
-            </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-              <div style={{ fontWeight: 800, color: squadStats[name].earnings >= 0 ? 'var(--teal)' : 'var(--error)' }}>
-                ₹{squadStats[name].earnings}
+        {sorted.map((name, i) => {
+          const stats = squadStats[name];
+          const isPos = stats.earnings >= 0;
+          return (
+            <div
+              key={name}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 0', borderBottom: '1.5px dashed var(--border)' }}
+            >
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ fontWeight: 800, color: i < 3 ? 'var(--orange)' : 'var(--muted)' }}>#{i + 1}</div>
+                <div>
+                  <div style={{ fontWeight: 700, marginBottom: '2px' }}>{name}</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--muted)', fontWeight: 600 }}>
+                    Won: <span style={{ color: 'var(--teal)' }}>₹{stats.won}</span> · Paid: <span style={{ color: 'var(--error)' }}>₹{stats.spent}</span>
+                  </div>
+                </div>
               </div>
-              <button
-                style={{ background: 'var(--bg)', color: 'var(--text)', border: '2px solid var(--border)', borderRadius: '8px', padding: '4px 8px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}
-                onClick={() => onViewHistory(name)}
-              >
-                History
-              </button>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
+                    {isPos ? 'Net Profit' : 'Net Loss'}
+                  </div>
+                  <div style={{ fontWeight: 800, color: isPos ? 'var(--teal)' : 'var(--error)' }}>
+                    {isPos ? '+' : '-'}₹{Math.abs(stats.earnings)}
+                  </div>
+                </div>
+                <button
+                  style={{ background: 'var(--bg)', color: 'var(--text)', border: '2px solid var(--border)', borderRadius: '8px', padding: '4px 8px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}
+                  onClick={() => onViewHistory(name)}
+                >
+                  History
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

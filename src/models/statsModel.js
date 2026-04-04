@@ -50,7 +50,7 @@ export function computeSquadStats(votes, matchResults) {
   // Seed all users who have ever voted
   votes.forEach(v => {
     if (!stats[v.user_name]) {
-      stats[v.user_name] = { wins: 0, earnings: 0, photo: v.user_photo };
+      stats[v.user_name] = { wins: 0, earnings: 0, photo: v.user_photo, spent: 0, won: 0 };
     }
   });
 
@@ -76,6 +76,7 @@ export function computeSquadStats(votes, matchResults) {
       // Automatically cash in 10rs from EVERY known member ONLY if someone won!
       allMembers.forEach(userName => {
         stats[userName].earnings -= BET_AMOUNT;
+        stats[userName].spent += BET_AMOUNT;
       });
 
       const pot = allMembers.length * BET_AMOUNT;
@@ -85,6 +86,7 @@ export function computeSquadStats(votes, matchResults) {
           stats[v.user_name].wins += 1;
           // Add the equal division back to the winner (they already paid the 10rs fee above)
           stats[v.user_name].earnings += individualPayout;
+          stats[v.user_name].won += individualPayout;
         }
       });
     }
@@ -102,6 +104,6 @@ export function computeSquadStats(votes, matchResults) {
  */
 export function computeUserStats(user, squadStats) {
   const name = user?.displayName;
-  if (!name || !squadStats[name]) return { wins: 0, earnings: 0 };
+  if (!name || !squadStats[name]) return { wins: 0, earnings: 0, spent: 0, won: 0 };
   return squadStats[name];
 }
