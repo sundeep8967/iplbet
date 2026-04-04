@@ -303,7 +303,7 @@ export default function App() {
     const invite_code = e.target.inviteCode.value;
     const bet_amount = Number(e.target.betAmount.value);
     
-    const success = await updateSettings({
+    await updateSettings({
       squad_name,
       invite_code,
       bet_amount,
@@ -312,9 +312,7 @@ export default function App() {
       admin_names: [user.displayName]
     }, true);
 
-    if (success) {
-      alert("Room successfully created! You are the Admin! 👑");
-    }
+    // The snapshot will instantly update `isCreatorSetup` and fluidly transition the user to the HomeView.
   };
 
   const handleJoin = async (e) => {
