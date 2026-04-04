@@ -214,14 +214,7 @@ export default function ProfileView({
             </div>
           )}
 
-          {/* ── Danger zone ── */}
-          <button
-            className="btn-primary"
-            style={{ fontSize: '0.75rem', padding: '0.6rem', background: 'var(--muted)', width: '100%' }}
-            onClick={onSync}
-          >
-            ⚠️ Danger: Factory Reset &amp; Re-Sync Schedule
-          </button>
+
         </div>
       )}
 
