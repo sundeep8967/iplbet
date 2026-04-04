@@ -165,8 +165,11 @@ export function useAppController() {
   };
 
   const handleRemoveAdmin = async (adminId) => {
-    if (confirm('Remove this admin?')) {
+    try {
       await removeAdminUserService(adminId);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to remove: ' + e.message);
     }
   };
 
