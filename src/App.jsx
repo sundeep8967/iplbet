@@ -214,25 +214,24 @@ export default function App() {
     try {
       const q = query(collection(db, 'room_settings'), limit(1));
       const snap = await getDocs(q);
-      const ref = snap.empty ? collection(db, 'room_settings') : snap.docs[0].ref;
       
-      const newSettings = { 
+      // Always merge full settings to avoid partial writes
+      const merged = { 
         ...roomSettings, 
         ...updates, 
-        creator_uid: roomSettings.creator_uid || user.uid,
+        creator_uid: updates.creator_uid || roomSettings.creator_uid || user.uid,
         admins: roomSettings.admins || [user.uid]
       };
 
       if (snap.empty) {
-        await addDoc(ref, newSettings);
+        await addDoc(collection(db, 'room_settings'), merged);
       } else {
-        await updateDoc(ref, updates); // Only update the specified fields for safety
+        await updateDoc(snap.docs[0].ref, merged);
       }
       if (!silent) alert("Settings updated!");
       return true;
     } catch (e) {
-      console.error(e);
-      alert("Error saving settings! Check console.");
+      console.error('Firebase error:', e);
       return false;
     }
   };
@@ -297,22 +296,22 @@ export default function App() {
   const isAdmin = user && (isCreatorSetup || isCreator || roomSettings.admin_names?.includes(user.displayName));
   const hasAccess = isCreatorSetup || isCreator || isMember;
 
-  const handleCreateRoom = async (e) => {
-    e.preventDefault();
-    const squad_name = e.target.squadName.value;
-    const invite_code = e.target.inviteCode.value;
-    const bet_amount = Number(e.target.betAmount.value);
-    
-    await updateSettings({
-      squad_name,
-      invite_code,
-      bet_amount,
+  const handleCreateRoom = async (squadName, inviteCode, betAmount, setLoading, setError) => {
+    setLoading(true);
+    setError('');
+    const ok = await updateSettings({
+      squad_name: squadName,
+      invite_code: inviteCode,
+      bet_amount: betAmount,
       creator_uid: user.uid,
       members: [{ uid: user.uid, name: user.displayName, photo: user.photoURL, joined_at: new Date().toISOString() }],
       admin_names: [user.displayName]
     }, true);
-
-    // The snapshot will instantly update `isCreatorSetup` and fluidly transition the user to the HomeView.
+    if (!ok) {
+      setError('Could not save to database. Check Firebase rules & internet.');
+      setLoading(false);
+    }
+    // On success, onSnapshot fires and isCreatorSetup becomes false — UI auto-transitions.
   };
 
   const handleJoin = async (e) => {
@@ -338,7 +337,7 @@ export default function App() {
         {!user ? (
           <LoginView login={() => signInWithPopup(auth, googleProvider)} />
         ) : isCreatorSetup ? (
-          <CreateRoomView onCreate={handleCreateRoom} logout={() => signOut(auth)} />
+          <CreateRoomView user={user} onCreate={handleCreateRoom} logout={() => signOut(auth)} />
         ) : !hasAccess ? (
           <JoinView onJoin={handleJoin} logout={() => signOut(auth)} />
         ) : (
@@ -524,40 +523,140 @@ function LoginView({ login }) {
   );
 }
 
-function CreateRoomView({ onCreate, logout }) {
+function CreateRoomView({ user, onCreate, logout }) {
+  const [squadName, setSquadName] = React.useState('Chai Squad');
+  const [inviteCode, setInviteCode] = React.useState('chai2025');
+  const [betAmount, setBetAmount] = React.useState(50);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState('');
+
+  const BET_PRESETS = [10, 25, 50, 100, 200];
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!squadName.trim()) return setError('Please enter a squad name.');
+    if (!inviteCode.trim() || inviteCode.includes(' ')) return setError('Invite code cannot be empty or have spaces.');
+    if (betAmount < 1) return setError('Bet amount must be at least ₹1.');
+    onCreate(squadName.trim(), inviteCode.trim(), betAmount, setLoading, setError);
+  };
+
   return (
     <div className="login-wrap fade-in">
-      <div className="login-card">
-        <div className="login-banner card-banner" style={{ background: 'var(--orange)' }}>
-          <div className="logo">Create Room 👑</div>
-          <div className="banner-sub">Configure your new squad workspace</div>
+      <div className="login-card" style={{ maxWidth: '480px' }}>
+        <div className="login-banner card-banner" style={{ background: 'linear-gradient(135deg, #FF6B2B, #ff9a5c)', padding: '2rem 1.5rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🏏</div>
+          <div className="logo" style={{ fontSize: '1.6rem' }}>Create Your Room</div>
+          <div className="banner-sub">Set up your private IPL betting squad</div>
         </div>
+
+        {/* Admin badge */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem 1.5rem', borderBottom: '2px dashed var(--border)', background: '#fffbf5' }}>
+          {user?.photoURL && <img src={user.photoURL} alt="" style={{ width: 36, height: 36, borderRadius: '50%', border: '2px solid var(--orange)' }} />}
+          <div>
+            <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>{user?.displayName}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>👑 You will be the Room Admin</div>
+          </div>
+        </div>
+
         <div className="card-body">
-           <form onSubmit={onCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="field-group">
-                <label>Squad Name</label>
-                <div className="input-wrap">
-                  <span className="field-icon">🏏</span>
-                  <input type="text" name="squadName" placeholder="e.g. The B-Boys" required defaultValue="Chai Squad" />
-                </div>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+
+            {/* Squad Name */}
+            <div className="field-group">
+              <label>🏟️ Squad Name</label>
+              <div className="input-wrap">
+                <input
+                  type="text"
+                  placeholder="e.g. The B-Boys, Thalas XI"
+                  value={squadName}
+                  onChange={e => setSquadName(e.target.value)}
+                  required
+                  maxLength={30}
+                  style={{ paddingLeft: '1rem' }}
+                />
               </div>
-              <div className="field-group">
-                <label>Bet Amount (₹ per match)</label>
-                <div className="input-wrap">
-                  <span className="field-icon">💰</span>
-                  <input type="number" name="betAmount" placeholder="50" required defaultValue="50" />
-                </div>
+            </div>
+
+            {/* Bet Amount */}
+            <div className="field-group">
+              <label>💰 Bet Amount (₹ per match)</label>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+                {BET_PRESETS.map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setBetAmount(p)}
+                    style={{
+                      padding: '0.3rem 0.8rem',
+                      borderRadius: '999px',
+                      border: '2px solid var(--dark)',
+                      background: betAmount === p ? 'var(--orange)' : 'white',
+                      color: betAmount === p ? 'white' : 'var(--dark)',
+                      fontWeight: 800,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s'
+                    }}
+                  >₹{p}</button>
+                ))}
               </div>
-              <div className="field-group">
-                <label>Secret Invite Code</label>
-                <div className="input-wrap">
-                  <span className="field-icon">🎟️</span>
-                  <input type="text" name="inviteCode" placeholder="Code for your friends" required defaultValue="chai2025" />
-                </div>
+              <div className="input-wrap">
+                <input
+                  type="number"
+                  placeholder="Custom amount"
+                  value={betAmount}
+                  onChange={e => setBetAmount(Number(e.target.value))}
+                  min={1}
+                  required
+                  style={{ paddingLeft: '1rem' }}
+                />
               </div>
-              <button type="submit" className="login-btn" style={{ background: 'var(--orange)', marginTop: '0.5rem' }}>Start the League 🚀</button>
-           </form>
-           <button onClick={logout} style={{ marginTop: '1.5rem', background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', width: '100%', fontWeight: 800 }}>Logout / Switch Account</button>
+            </div>
+
+            {/* Invite Code */}
+            <div className="field-group">
+              <label>🎟️ Secret Invite Code</label>
+              <div className="input-wrap">
+                <input
+                  type="text"
+                  placeholder="No spaces (e.g. chai2025)"
+                  value={inviteCode}
+                  onChange={e => setInviteCode(e.target.value.replace(/\s/g, ''))}
+                  required
+                  style={{ paddingLeft: '1rem', letterSpacing: '0.1em', fontWeight: 700 }}
+                />
+              </div>
+            </div>
+
+            {/* Preview card */}
+            <div style={{ background: 'var(--yellow)', border: '2px solid var(--dark)', borderRadius: '12px', padding: '1rem', fontSize: '0.85rem' }}>
+              <div style={{ fontWeight: 800, marginBottom: '0.4rem' }}>📋 Room Preview</div>
+              <div>🏟️ <strong>{squadName || '—'}</strong></div>
+              <div>💰 ₹<strong>{betAmount}</strong> per match</div>
+              <div>🎟️ Code: <strong style={{ color: 'var(--orange)' }}>{inviteCode || '—'}</strong></div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div style={{ background: '#fff0f0', border: '2px solid #ff3b3b', borderRadius: '10px', padding: '0.75rem', color: '#cc0000', fontWeight: 700, fontSize: '0.85rem' }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="login-btn"
+              disabled={loading}
+              style={{ background: loading ? 'var(--muted)' : 'var(--orange)', marginTop: '0.25rem', fontSize: '1rem', position: 'relative' }}
+            >
+              {loading ? '⏳ Creating Room...' : '🚀 Start the League'}
+            </button>
+          </form>
+
+          <button
+            onClick={logout}
+            style={{ marginTop: '1.5rem', background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', width: '100%', fontWeight: 700, fontSize: '0.85rem' }}
+          >← Logout / Switch Account</button>
         </div>
       </div>
     </div>
