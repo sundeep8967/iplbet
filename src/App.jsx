@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db, auth, googleProvider } from './firebase';
 import { signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
-import { collection, addDoc, onSnapshot, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, where, orderBy, limit, getDocs, updateDoc } from 'firebase/firestore';
 import { Trophy, Users, Clock, Flame, LogOut, ShieldCheck, Mail, Target, Coins, Zap, Home, Calendar, User, LayoutGrid, Share2, Copy } from 'lucide-react';
 import { format, isBefore, setHours, setMinutes, setSeconds, addDays, parse } from 'date-fns';
 
-const ALLOWED_MEMBERS = ['Aravind', 'Sai Vishnu', 'Sanjay', 'Sundeep', 'VN Karthik'];
 
 const IPL_SCHEDULE = [
   { num: 1, date: "March 28", time: "7:30 PM", fixture: "Royal Challengers Bengaluru vs Sunrisers Hyderabad" },
@@ -133,7 +132,12 @@ export default function App() {
   // 5. Shared Calculations (Memoized)
   const squadStats = useMemo(() => {
     const stats = {};
-    ALLOWED_MEMBERS.forEach(m => stats[m] = { wins: 0, earnings: 0 });
+    const members = roomSettings.members || [];
+    
+    // Seed stats with all official members
+    members.forEach(m => {
+      stats[m.name] = { wins: 0, earnings: 0, photo: m.photo };
+    });
 
     matchResults.forEach(res => {
       const matchId = res.match_id;
@@ -147,17 +151,20 @@ export default function App() {
       if (winnersCount > 0 && winnersCount < mVotes.length) {
         const individualPayout = Math.floor(pot / winnersCount);
         mVotes.forEach(v => {
-          if (v.chosen_team === winner && stats[v.user_name]) {
+          // Dynamically add voters to stats if they aren't explicitly registered yet (fallback)
+          if (!stats[v.user_name]) stats[v.user_name] = { wins: 0, earnings: 0, photo: v.user_photo };
+          
+          if (v.chosen_team === winner) {
             stats[v.user_name].wins += 1;
             stats[v.user_name].earnings += (individualPayout - roomSettings.bet_amount);
-          } else if (stats[v.user_name]) {
+          } else {
             stats[v.user_name].earnings -= roomSettings.bet_amount;
           }
         });
       }
     });
     return stats;
-  }, [votes, matchResults, roomSettings.bet_amount]);
+  }, [votes, matchResults, roomSettings.bet_amount, roomSettings.members]);
 
   const userStats = useMemo(() => {
     const name = user?.displayName;
@@ -203,20 +210,61 @@ export default function App() {
     alert("Synced!");
   };
 
-  const updateSettings = async (updates) => {
+  const updateSettings = async (updates, silent = false) => {
     try {
       const q = query(collection(db, 'room_settings'), limit(1));
       const snap = await getDocs(q);
       const ref = snap.empty ? collection(db, 'room_settings') : snap.docs[0].ref;
       
+      const newSettings = { 
+        ...roomSettings, 
+        ...updates, 
+        creator_uid: roomSettings.creator_uid || user.uid,
+        admins: roomSettings.admins || [user.uid]
+      };
+
       if (snap.empty) {
-        await addDoc(ref, { ...roomSettings, ...updates, creator_uid: user.uid });
+        await addDoc(ref, newSettings);
       } else {
-        // Just adding a new doc is easier for now to override
-        await addDoc(collection(db, 'room_settings'), { ...roomSettings, ...updates, creator_uid: user.uid });
+        await updateDoc(ref, updates); // Only update the specified fields for safety
       }
-      alert("Settings updated!");
-    } catch (e) { console.error(e); }
+      if (!silent) alert("Settings updated!");
+      return true;
+    } catch (e) {
+      console.error(e);
+      alert("Error saving settings! Check console.");
+      return false;
+    }
+  };
+
+  const manageAdmins = () => {
+    const memberNames = (roomSettings.members || []).map(m => m.name).join(', ');
+    const targetName = prompt(`Who do you want to make an Admin?\nOptions: ${memberNames}\n(Enter exact name)`);
+    if (!targetName) return;
+    
+    const currentAdmins = roomSettings.admin_names || [];
+    if (!currentAdmins.includes(targetName)) {
+      updateSettings({ admin_names: [...currentAdmins, targetName] });
+      alert(`${targetName} is now an Admin!`);
+    } else {
+      alert(`${targetName} is already an Admin.`);
+    }
+  };
+
+  const addCustomMatch = async () => {
+    const fixture = prompt("Enter custom match teams (e.g. India vs Australia):");
+    if (!fixture) return;
+    const date = prompt("Enter date (e.g. May 1):", format(new Date(), 'MMMM d'));
+    if (!date) return;
+    
+    const [t1, t2] = fixture.split(' vs ');
+    const num = IPL_SCHEDULE.length + activeMatches.length + Math.floor(Math.random() * 100);
+    
+    await addDoc(collection(db, 'matches'), { 
+      num, date, fixture, t1, t2, 
+      time: "Evening", created_at: new Date().toISOString() 
+    });
+    alert("Custom Match Added!");
   };
 
   const finalizeWinner = async (matchId, winner) => {
@@ -226,15 +274,58 @@ export default function App() {
   };
 
   const shareLink = async () => {
-    const text = `Join my IPL Betting Room: ${roomSettings.squad_name}! 🍵🏏`;
+    const code = roomSettings.invite_code || 'chai2025';
+    const text = `Join my IPL Betting Room: ${roomSettings.squad_name}! 🍵🏏\n\nUse Invite Code: ${code}\n\n`;
     const url = window.location.origin;
     if (navigator.share) {
       try {
         await navigator.share({ title: 'ChaiBet', text, url });
-      } catch (e) { console.error(e); }
+      } catch (e) {
+        navigator.clipboard.writeText(`${text} ${url}`);
+        alert(`Link & Invite Code (${code}) copied to clipboard!`);
+      }
     } else {
       navigator.clipboard.writeText(`${text} ${url}`);
-      alert("Link copied to clipboard!");
+      alert(`Link & Invite Code (${code}) copied to clipboard!`);
+    }
+  };
+
+  // Determine access rights
+  const isCreatorSetup = !roomSettings.creator_uid; // Needs initial setup
+  const isCreator = user && roomSettings.creator_uid === user.uid;
+  const isMember = user && roomSettings.members?.some(m => m.uid === user.uid);
+  const isAdmin = user && (isCreatorSetup || isCreator || roomSettings.admin_names?.includes(user.displayName));
+  const hasAccess = isCreatorSetup || isCreator || isMember;
+
+  const handleCreateRoom = async (e) => {
+    e.preventDefault();
+    const squad_name = e.target.squadName.value;
+    const invite_code = e.target.inviteCode.value;
+    const bet_amount = Number(e.target.betAmount.value);
+    
+    const success = await updateSettings({
+      squad_name,
+      invite_code,
+      bet_amount,
+      creator_uid: user.uid,
+      members: [{ uid: user.uid, name: user.displayName, photo: user.photoURL, joined_at: new Date().toISOString() }],
+      admin_names: [user.displayName]
+    }, true);
+
+    if (success) {
+      alert("Room successfully created! You are the Admin! 👑");
+    }
+  };
+
+  const handleJoin = async (e) => {
+    e.preventDefault();
+    const code = e.target.inviteCode.value;
+    if (code === (roomSettings.invite_code || "chai2025")) {
+      const updatedMembers = [...(roomSettings.members || []), { uid: user.uid, name: user.displayName, photo: user.photoURL, joined_at: new Date().toISOString() }];
+      await updateSettings({ members: updatedMembers });
+      alert("Welcome to the Squad!");
+    } else {
+      alert("Invalid Invite Code 😂 Ask the Admin!");
     }
   };
 
@@ -248,6 +339,10 @@ export default function App() {
       <div className="app-container">
         {!user ? (
           <LoginView login={() => signInWithPopup(auth, googleProvider)} />
+        ) : isCreatorSetup ? (
+          <CreateRoomView onCreate={handleCreateRoom} logout={() => signOut(auth)} />
+        ) : !hasAccess ? (
+          <JoinView onJoin={handleJoin} logout={() => signOut(auth)} />
         ) : (
           <>
             {activeTab === 'home' && <HomeView user={user} stats={userStats} settings={roomSettings} onShare={shareLink} />}
@@ -271,6 +366,9 @@ export default function App() {
                 onUpdate={updateSettings}
                 onSettle={finalizeWinner}
                 activeMatches={activeMatches}
+                isAdmin={isAdmin}
+                manageAdmins={manageAdmins}
+                addCustomMatch={addCustomMatch}
               />
             )}
 
@@ -284,11 +382,211 @@ export default function App() {
 
 // VIEW COMPONENTS
 function LoginView({ login }) {
+  const [tab, setTab] = useState('login');
+  const [showPwd, setShowPwd] = useState(false);
+
   return (
-    <div className="glass-card">
-      <div className="card-banner"><div className="logo">ChaiBet 🍵</div></div>
-      <div className="card-body" style={{ textAlign: 'center' }}>
-        <button className="btn-primary" onClick={login}>Enter Arena 🚀</button>
+    <div className="login-wrap fade-in">
+      <div className="login-card">
+        
+        {/* BANNER */}
+        <div className="login-banner card-banner">
+          <div className="logo">ChaiBet 🍵</div>
+          <div className="banner-sub">IPL bets with your actual friends</div>
+        </div>
+
+        {/* PRIVATE BADGE */}
+        <div className="private-badge">
+          <div className="private-pill">🔒 Private Group Access Only</div>
+        </div>
+
+        {/* BODY */}
+        <div className="card-body">
+          
+          {/* GROUP INFO */}
+          <div className="welcome-row">
+            <div className="group-avatar">🏏</div>
+            <div className="welcome-text">
+              <div className="welcome-title">Chai Squad's IPL 2025 🏆</div>
+              <div className="welcome-sub">Login to place your bets, check the leaderboard & roast your friends</div>
+            </div>
+          </div>
+
+          {/* MEMBERS */}
+          <div className="members-row">
+            <div className="member-avatars">
+              <div className="m-av">😎</div>
+              <div className="m-av">🤓</div>
+              <div className="m-av">🥳</div>
+              <div className="m-av">😤</div>
+              <div className="m-av" style={{ background: 'var(--yellow)', fontSize: '0.6rem', fontWeight: 700, color: 'var(--dark)' }}>+4</div>
+            </div>
+            <div className="members-text"><strong>8 members</strong> · 3 online now 🟢</div>
+          </div>
+
+          {/* TABS */}
+          <div className="tab-row">
+            <div className={`tab ${tab === 'login' ? 'active' : ''}`} onClick={() => setTab('login')}>Login 🙋</div>
+            <div className={`tab ${tab === 'signup' ? 'active' : ''}`} onClick={() => setTab('signup')}>New here? 👋</div>
+          </div>
+
+          {/* LOGIN FORM */}
+          <div style={{ display: tab === 'login' ? 'block' : 'none' }}>
+            <div className="field-group">
+              <label>Your Name / Nickname</label>
+              <div className="input-wrap">
+                <span className="field-icon">😄</span>
+                <input type="text" placeholder="e.g. Rahul, Bhai, Paaji…" />
+              </div>
+            </div>
+            <div className="field-group">
+              <label>Password</label>
+              <div className="input-wrap">
+                <span className="field-icon">🔑</span>
+                <input type={showPwd ? "text" : "password"} placeholder="Shhh… only the gang knows" />
+                <button className="eye-btn" onClick={() => setShowPwd(!showPwd)}>👁️</button>
+              </div>
+            </div>
+            <div className="forgot-row">
+              <a className="forgot-link" onClick={() => alert("Ask the group chat! 😂")}>Forgot password? Ask Rahul 😂</a>
+            </div>
+
+            <button className="login-btn" onClick={() => alert("Please use Google Sign-in to access the room for now!")}>Let's Goooo 🚀</button>
+
+            <div className="divider">
+              <div className="divider-line"></div>
+              <div className="divider-text">or jump in with</div>
+              <div class="divider-line"></div>
+            </div>
+
+            <button className="btn-google google-btn" onClick={login}>
+              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Continue with Google
+            </button>
+          </div>
+
+          {/* SIGNUP FORM */}
+          <div style={{ display: tab === 'signup' ? 'block' : 'none' }}>
+            <div className="field-group">
+              <label>Your Name / Nickname</label>
+              <div className="input-wrap">
+                <span className="field-icon">😄</span>
+                <input type="text" placeholder="What do the boys call you?" />
+              </div>
+            </div>
+            <div className="field-group">
+              <label>Group Invite Code</label>
+              <div className="input-wrap">
+                <span className="field-icon">🎟️</span>
+                <input type="text" placeholder="Got a code? Drop it here" />
+              </div>
+            </div>
+            <div className="field-group">
+              <label>Set a Password</label>
+              <div className="input-wrap">
+                <span className="field-icon">🔑</span>
+                <input type={showPwd ? "text" : "password"} placeholder="Make it something stupid 😂" />
+                <button className="eye-btn" onClick={() => setShowPwd(!showPwd)}>👁️</button>
+              </div>
+            </div>
+
+            <button className="login-btn" style={{ background: 'var(--teal)' }} onClick={() => alert("Please use Google Sign-in to access the room for now!")}>Join the Gang 🎉</button>
+
+            <div className="divider">
+              <div className="divider-line"></div>
+              <div className="divider-text">or jump in with</div>
+              <div className="divider-line"></div>
+            </div>
+
+            <button className="btn-google google-btn" onClick={login}>
+              <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+              Sign up with Google
+            </button>
+          </div>
+
+        </div>
+
+        {/* CARD FOOTER */}
+        <div className="login-footer">
+          <div className="login-footer-text">
+            {tab === 'login' ? (
+              <>Not in the group yet? <a onClick={() => setTab('signup')}>Ask for an invite code 🎟️</a></>
+            ) : (
+              <>Already in the gang? <a onClick={() => setTab('login')}>Login here 🙋</a></>
+            )}
+          </div>
+        </div>
+
+      </div>
+
+      <div className="bottom-note">
+        🔒 Private group · <strong>No public access</strong> · 18+ only · Play responsibly
+      </div>
+    </div>
+  );
+}
+
+function CreateRoomView({ onCreate, logout }) {
+  return (
+    <div className="login-wrap fade-in">
+      <div className="login-card">
+        <div className="login-banner card-banner" style={{ background: 'var(--orange)' }}>
+          <div className="logo">Create Room 👑</div>
+          <div className="banner-sub">Configure your new squad workspace</div>
+        </div>
+        <div className="card-body">
+           <form onSubmit={onCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="field-group">
+                <label>Squad Name</label>
+                <div className="input-wrap">
+                  <span className="field-icon">🏏</span>
+                  <input type="text" name="squadName" placeholder="e.g. The B-Boys" required defaultValue="Chai Squad" />
+                </div>
+              </div>
+              <div className="field-group">
+                <label>Bet Amount (₹ per match)</label>
+                <div className="input-wrap">
+                  <span className="field-icon">💰</span>
+                  <input type="number" name="betAmount" placeholder="50" required defaultValue="50" />
+                </div>
+              </div>
+              <div className="field-group">
+                <label>Secret Invite Code</label>
+                <div className="input-wrap">
+                  <span className="field-icon">🎟️</span>
+                  <input type="text" name="inviteCode" placeholder="Code for your friends" required defaultValue="chai2025" />
+                </div>
+              </div>
+              <button type="submit" className="login-btn" style={{ background: 'var(--orange)', marginTop: '0.5rem' }}>Start the League 🚀</button>
+           </form>
+           <button onClick={logout} style={{ marginTop: '1.5rem', background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', width: '100%', fontWeight: 800 }}>Logout / Switch Account</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function JoinView({ onJoin, logout }) {
+  return (
+    <div className="login-wrap fade-in">
+      <div className="login-card">
+        <div className="login-banner card-banner" style={{ background: 'var(--teal)' }}>
+          <div className="logo">Join the Squad 🍵</div>
+          <div className="banner-sub">You need an invite code to enter</div>
+        </div>
+        <div className="card-body">
+           <form onSubmit={onJoin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="field-group">
+                <label>Invite Code</label>
+                <div className="input-wrap">
+                  <span className="field-icon">🎟️</span>
+                  <input type="text" name="inviteCode" placeholder="Enter code from Admin" required />
+                </div>
+              </div>
+              <button type="submit" className="login-btn" style={{ background: 'var(--teal)' }}>Enter Room 🚀</button>
+           </form>
+           <button onClick={logout} style={{ marginTop: '1.5rem', background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', width: '100%', fontWeight: 800 }}>Logout / Switch Account</button>
+        </div>
       </div>
     </div>
   );
@@ -342,6 +640,8 @@ function BetView({ matches, votes, roomSettings, timeLeft, handleVote }) {
           const matchVotes = votes.filter(v => v.match_id === m.id);
           const isToday = m.date === format(new Date(), 'MMMM d');
           
+          const squadMembers = roomSettings.members || [];
+          
           return (
             <div key={m.id} className="glass-card">
               <div style={{ padding: '1rem', borderBottom: '2px solid var(--dark)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)' }}>
@@ -360,10 +660,30 @@ function BetView({ matches, votes, roomSettings, timeLeft, handleVote }) {
                     <button className="btn-primary" style={{ padding: '0.5rem' }} onClick={() => handleVote(m.id, m.teams[1])}>PICK</button>
                   </div>
                 </div>
-                <div style={{ marginTop: '1rem', display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center' }}>
-                  {matchVotes.map((v, i) => (
-                    <img key={i} src={v.user_photo} title={v.user_name} style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid var(--dark)' }} referrerPolicy="no-referrer" />
-                  ))}
+                <div style={{ marginTop: '1.5rem', borderTop: '2.5px dashed var(--border)', paddingTop: '1rem', textAlign: 'left' }}>
+                  <p style={{ fontSize: '0.75rem', fontWeight: 800, marginBottom: '0.8rem', opacity: 0.6 }}>SQUAD STATUS:</p>
+                  {squadMembers.length === 0 ? (
+                    <p style={{ fontSize: '0.75rem', opacity: 0.5 }}>Waiting for members to join...</p>
+                  ) : (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))', gap: '10px' }}>
+                      {squadMembers.map(member => {
+                        const userVote = matchVotes.find(v => v.user_id === member.uid);
+                        return (
+                          <div key={member.uid} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 12px', background: 'white', border: '2px solid var(--dark)', borderRadius: '12px', boxShadow: '3px 3px 0 var(--border)' }}>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: userVote ? 'none' : '#F0F0F0', border: '1.5px solid var(--dark)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem' }}>
+                              {userVote ? <img src={userVote.user_photo} style={{ width: '100%', height: '100%' }} referrerPolicy="no-referrer" /> : <img src={member.photo} style={{ width: '100%', height: '100%', opacity: 0.4 }} referrerPolicy="no-referrer" />}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: '0.7rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{member.name.split(' ')[0]}</div>
+                              <div style={{ fontSize: '0.62rem', fontWeight: 900, color: userVote ? 'var(--orange)' : 'var(--muted)' }}>
+                                {userVote ? userVote.chosen_team : 'WAITING...'}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -375,19 +695,56 @@ function BetView({ matches, votes, roomSettings, timeLeft, handleVote }) {
 }
 
 function ScheduleView() {
+  const now = new Date();
+  const todayStr = format(now, 'MMMM d');
+  const scrollRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, []);
+
   return (
     <div className="fade-in">
       <h3 style={{ fontFamily: "'Baloo 2', sans-serif", marginBottom: '1rem' }}>IPL CALENDAR 📅</h3>
       <div className="schedule-list">
-        {IPL_SCHEDULE.map(m => (
-          <div key={m.num} className="schedule-card">
-            <div className="schedule-info">
-              <span className="match-num-badge">MATCH {m.num}</span>
-              <h5>{m.fixture}</h5>
-              <p>{m.date} · {m.time}</p>
+        {IPL_SCHEDULE.map((m, index) => {
+          // Parse match time: "April 4 3:30 PM"
+          const matchDate = parse(`${m.date} 2026 ${m.time}`, 'MMMM d yyyy h:mm a', new Date());
+          const isPast = isBefore(matchDate, now);
+          const isToday = m.date === todayStr;
+          
+          // First upcoming or current match to scroll to
+          const isNextFirst = !isPast && (index === 0 || isBefore(parse(`${IPL_SCHEDULE[index-1].date} 2026 ${IPL_SCHEDULE[index-1].time}`, 'MMMM d yyyy h:mm a', new Date()), now));
+
+          return (
+            <div 
+              key={m.num} 
+              ref={isNextFirst ? scrollRef : null}
+              className="schedule-card" 
+              style={{ 
+                borderColor: isPast ? 'var(--error)' : 'var(--teal)',
+                background: isPast ? '#FFF0F5' : '#F0FFF7',
+                borderWidth: isToday ? '3px' : '2px',
+                opacity: isPast ? 0.7 : 1
+              }}
+            >
+              <div className="schedule-info">
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <span className="match-num-badge" style={{ background: isPast ? '#eee' : 'var(--yellow)' }}>MATCH {m.num}</span>
+                  {isToday && <span style={{ background: 'var(--orange)', color: 'white', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>TODAY 🔥</span>}
+                  {isPast ? 
+                    <span style={{ color: 'var(--error)', fontSize: '0.6rem', fontWeight: 'bold' }}>● OVER</span> : 
+                    <span style={{ color: 'var(--teal)', fontSize: '0.6rem', fontWeight: 'bold' }}>● {isToday ? 'LIVE / UPCOMING' : 'UPCOMING'}</span>
+                  }
+                </div>
+                <h5 style={{ color: isPast ? 'var(--muted)' : 'inherit' }}>{m.fixture}</h5>
+                <p>{m.date} · {m.time}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -415,39 +772,66 @@ function RanksView({ squadStats }) {
   );
 }
 
-function ProfileView({ user, logout, roomSettings, onSync, onUpdate, onSettle, activeMatches }) {
+function ProfileView({ user, logout, roomSettings, onSync, onUpdate, onSettle, activeMatches, isAdmin, manageAdmins, addCustomMatch }) {
   return (
     <div className="fade-in" style={{ textAlign: 'center' }}>
-       <img src={user.photoURL} alt="pro" style={{ width: '80px', height: '80px', borderRadius: '50%', border: '4px solid var(--orange)', marginBottom: '1rem' }} />
+       <div style={{ position: 'relative', display: 'inline-block' }}>
+         <img src={user.photoURL} alt="pro" style={{ width: '80px', height: '80px', borderRadius: '50%', border: '4px solid var(--orange)', marginBottom: '1rem' }} />
+         {isAdmin && <div style={{ position: 'absolute', bottom: '15px', right: '-10px', background: 'var(--teal)', color: 'white', fontSize: '0.6rem', padding: '3px 6px', borderRadius: '8px', fontWeight: 900, border: '2px solid var(--dark)' }}>ADMIN</div>}
+       </div>
        <h3 style={{ fontFamily: "'Baloo 2', sans-serif" }}>{user.displayName}</h3>
        <p style={{ opacity: 0.6, fontSize: '0.85rem', marginBottom: '2rem' }}>{user.email}</p>
        
-       <div className="glass-card" style={{ textAlign: 'left', padding: '1.5rem', marginBottom: '1.5rem' }}>
-          <h4 style={{ fontFamily: "'Baloo 2', sans-serif", borderBottom: '2px solid var(--dark)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>SQUAD SETTINGS</h4>
-          <button className="btn-primary" style={{ fontSize: '0.85rem', marginBottom: '10px' }} onClick={() => onUpdate({ squad_name: prompt("New Squad Name:", roomSettings.squad_name) })}>
-            Rename Squad Room
-          </button>
-          <button className="btn-primary" style={{ fontSize: '0.85rem', background: 'var(--teal)' }} onClick={() => onUpdate({ bet_amount: Number(prompt("Bet Per Match (rs):", roomSettings.bet_amount)) })}>
-            Change Bet Amount (₹{roomSettings.bet_amount})
-          </button>
-          <button className="btn-primary" style={{ fontSize: '0.85rem', background: 'var(--yellow)', color: 'var(--dark)', marginTop: '10px' }} onClick={onSync}>
-            Re-Sync Full Schedule
-          </button>
-          
-          <div style={{ marginTop: '1.5rem' }}>
-            <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.5rem' }}>SETTLE RECENT MATCHES:</p>
-            {activeMatches.map(m => (
-              <button key={m.id} className="btn-primary" style={{ fontSize: '0.7rem', height: '35px', marginBottom: '5px', background: 'white', color: 'var(--dark)' }} onClick={() => onSettle(m.id, prompt(`Winner of ${m.fixture}?`))}>
-                Settle {m.num}
+       {isAdmin && (
+         <div className="glass-card fade-in" style={{ textAlign: 'left', padding: '1.5rem', marginBottom: '1.5rem', background: '#FFFBF0' }}>
+            <h4 style={{ fontFamily: "'Baloo 2', sans-serif", borderBottom: '2.5px dashed var(--dark)', paddingBottom: '0.5rem', marginBottom: '1rem', color: 'var(--orange)' }}>
+              👑 ADMIN DASHBOARD
+            </h4>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '1rem' }}>
+              <button className="btn-primary" style={{ fontSize: '0.75rem', padding: '0.6rem' }} onClick={() => onUpdate({ squad_name: prompt("New Squad Name:", roomSettings.squad_name) })}>
+                Rename Room
               </button>
-            ))}
-          </div>
-       </div>
+              <button className="btn-primary" style={{ fontSize: '0.75rem', padding: '0.6rem', background: 'var(--teal)' }} onClick={() => onUpdate({ bet_amount: Number(prompt("Bet Per Match (rs):", roomSettings.bet_amount)) })}>
+                Set Bet (₹{roomSettings.bet_amount})
+              </button>
+              <button className="btn-primary" style={{ fontSize: '0.75rem', padding: '0.6rem', background: 'var(--telegram, #0088cc)', color: 'white' }} onClick={() => onUpdate({ invite_code: prompt("New Invite Code (no spaces):", roomSettings.invite_code || 'chai2025') })}>
+                Set Invite Code
+              </button>
+              <button className="btn-primary" style={{ fontSize: '0.75rem', padding: '0.6rem', background: 'white', color: 'var(--dark)' }} onClick={manageAdmins}>
+                Manage Admins
+              </button>
+            </div>
+            
+            <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.5rem', background: '#eef', padding: '8px', borderRadius: '8px', textAlign: 'center' }}>
+              Current Invite Code: <span style={{ color: 'var(--orange)', fontSize: '0.9rem' }}>{roomSettings.invite_code || 'chai2025'}</span>
+            </p>
+
+            <button className="btn-primary" style={{ fontSize: '0.75rem', padding: '0.6rem', background: 'var(--yellow)', color: 'var(--dark)', width: '100%', marginBottom: '1rem' }} onClick={addCustomMatch}>
+              + Add Custom Match
+            </button>
+
+            <button className="btn-primary" style={{ fontSize: '0.75rem', padding: '0.6rem', background: 'var(--muted)', width: '100%', marginBottom: '1.5rem' }} onClick={onSync}>
+              ⚠️ Danger: Factory Reset & Re-Sync Schedule
+            </button>
+            
+            <div>
+              <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.5rem' }}>SETTLE RECENT MATCHES:</p>
+              {activeMatches.map(m => (
+                <button key={m.id} className="btn-primary" style={{ fontSize: '0.7rem', height: '35px', marginBottom: '5px', background: 'white', color: 'var(--dark)' }} onClick={() => onSettle(m.id, prompt(`Winner of ${m.fixture}?`))}>
+                  Settle {m.num}
+                </button>
+              ))}
+              {activeMatches.length === 0 && <p style={{ fontSize: '0.7rem', opacity: 0.5 }}>No active matches to settle right now.</p>}
+            </div>
+         </div>
+       )}
 
        <button className="btn-primary" onClick={logout} style={{ background: 'var(--dark)' }}>Log Out 👋</button>
     </div>
   );
 }
+
 
 function BottomNav({ activeTab, setActiveTab }) {
   return (
