@@ -3,7 +3,7 @@ import { db, auth, googleProvider } from './firebase';
 import { signInWithPopup, onAuthStateChanged, signOut } from 'firebase/auth';
 import { collection, addDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { Share2 } from 'lucide-react';
-import { format, isBefore, setHours, setMinutes, setSeconds, addDays, parse } from 'date-fns';
+import { format, isBefore, addDays, parse } from 'date-fns';
 
 
 const IPL_SCHEDULE = [
@@ -56,8 +56,7 @@ export default function App() {
   const [matchResults, setMatchResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
-  const [timeLeft, setTimeLeft] = useState('');
-  const [isClosed, setIsClosed] = useState(false);
+
   
   const BET_AMOUNT = 10;
 
@@ -70,30 +69,22 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Filtered Match Detection (Next Days)
-  // Only shows matches where the voting deadline hasn't passed
+  // 2. Filtered Match Detection — shows upcoming matches within next 2 days
   useEffect(() => {
     const detectMatches = () => {
       const now = new Date();
-      const cutoff = setSeconds(setMinutes(setHours(new Date(), 18), 59), 0);
-      const today = format(now, 'MMMM d');
-      const tomorrow = format(addDays(now, 1), 'MMMM d');
-      const dayAfter = format(addDays(now, 2), 'MMMM d');
-      
+      const twoDaysLater = addDays(now, 2);
       const allUpcoming = IPL_SCHEDULE.filter(m => {
-        if (m.date === today) return isBefore(now, cutoff);
-        return m.date === tomorrow || m.date === dayAfter;
+        const matchTime = parse(`${m.date} 2026 ${m.time}`, 'MMMM d yyyy h:mm a', new Date());
+        return isBefore(now, matchTime) && isBefore(matchTime, twoDaysLater);
       }).map(m => {
         const [t1, t2] = m.fixture.split(' vs ');
         return { ...m, id: `ipl-2025-${m.num}`, teams: [t1, t2] };
       });
-      
       setActiveMatches(allUpcoming);
-      // If today is closed, effectively voting logic will lock these out
-      setIsClosed(!isBefore(now, cutoff));
     };
     detectMatches();
-    const interval = setInterval(detectMatches, 60000); // Check every minute
+    const interval = setInterval(detectMatches, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -108,23 +99,7 @@ export default function App() {
     return () => { unsubVotes(); unsubResults(); };
   }, []);
 
-  // 4. Timer logic for UI
-  useEffect(() => {
-    const timer = setInterval(() => {
-      const now = new Date();
-      const cutoff = setSeconds(setMinutes(setHours(new Date(), 18), 59), 0);
-      if (isBefore(now, cutoff)) {
-        const diff = cutoff - now;
-        const h = Math.floor(diff / 3600000);
-        const m = Math.floor((diff % 3600000) / 60000);
-        const s = Math.floor((diff % 60000) / 1000);
-        setTimeLeft(`${h}h ${m}m ${s}s`);
-      } else {
-        setTimeLeft('CLOSED');
-      }
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+
 
   // 5. Shared Calculations (Memoized)
   const squadStats = useMemo(() => {
@@ -173,15 +148,14 @@ export default function App() {
 
   const handleVote = async (matchId, team) => {
     const now = new Date();
-    const cutoff = setSeconds(setMinutes(setHours(new Date(), 18), 59), 0);
-    
-    // Only block if it's the current day's match
     const match = activeMatches.find(m => m.id === matchId);
-    if (match?.date === format(now, 'MMMM d') && !isBefore(now, cutoff)) {
-      alert("POLL CLOSED for today's match!");
-      return;
+    if (match) {
+      const matchTime = parse(`${match.date} 2026 ${match.time}`, 'MMMM d yyyy h:mm a', new Date());
+      if (!isBefore(now, matchTime)) {
+        alert('POLL CLOSED — this match has already started!');
+        return;
+      }
     }
-    
     if (!user) return;
     try {
       await addDoc(collection(db, 'votes'), {
@@ -265,7 +239,6 @@ export default function App() {
                 votes={votes} 
                 squadStats={squadStats}
                 user={user}
-                timeLeft={timeLeft}
                 handleVote={handleVote}
               />
             )}
@@ -365,7 +338,35 @@ function HomeView({ user, stats, onShare }) {
   );
 }
 
-function BetView({ matches, votes, squadStats, user, timeLeft, handleVote }) {
+function MatchTimer({ match }) {
+  const [timeLeft, setTimeLeft] = useState('');
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      const matchTime = parse(`${match.date} 2026 ${match.time}`, 'MMMM d yyyy h:mm a', new Date());
+      if (isBefore(now, matchTime)) {
+        const diff = matchTime - now;
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        setTimeLeft(`${h}h ${m}m ${s}s`);
+      } else {
+        setTimeLeft('CLOSED');
+      }
+    };
+    update();
+    const timer = setInterval(update, 1000);
+    return () => clearInterval(timer);
+  }, [match]);
+
+  return (
+    <div style={{ color: timeLeft === 'CLOSED' ? 'var(--muted)' : 'var(--error)', fontWeight: 800, fontSize: '0.75rem' }}>
+      {timeLeft === 'CLOSED' ? '🔒 CLOSED' : `CLOSES IN: ${timeLeft}`}
+    </div>
+  );
+}
+
+function BetView({ matches, votes, squadStats, user, handleVote }) {
   return (
     <div className="fade-in">
       <h3 style={{ fontFamily: "'Baloo 2', sans-serif", marginBottom: '1.5rem' }}>NEXT DAYS PICKS 🏏</h3>
@@ -374,7 +375,6 @@ function BetView({ matches, votes, squadStats, user, timeLeft, handleVote }) {
           <p style={{ textAlign: 'center', opacity: 0.5 }}>No matches open for betting right now. Check back tomorrow!</p>
         ) : matches.map(m => {
           const matchVotes = votes.filter(v => v.match_id === m.id);
-          const isToday = m.date === format(new Date(), 'MMMM d');
           
           // Build squad members list from all users who have voted (any match)
           const knownUsersMap = new Map();
@@ -392,7 +392,7 @@ function BetView({ matches, votes, squadStats, user, timeLeft, handleVote }) {
             <div key={m.id} className="glass-card">
               <div style={{ padding: '1rem', borderBottom: '2px solid var(--dark)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)' }}>
                 <div style={{ fontSize: '0.7rem', fontWeight: 800 }}>{m.date} · {m.time}</div>
-                {isToday && <div style={{ color: 'var(--error)', fontWeight: 800, fontSize: '0.75rem' }}>CLOSES IN: {timeLeft}</div>}
+                <MatchTimer match={m} />
               </div>
               <div className="card-body" style={{ textAlign: 'center' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
