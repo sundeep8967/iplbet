@@ -8,7 +8,7 @@
  *   node scripts/scrapeMatchResult.js "Royal Challengers Bengaluru" "Chennai Super Kings" "April 5"
  */
 
-import { chromium } from 'playwright';
+// We dynamically import playwright based on the environment to support Vercel Serverless
 
 // Canonical short names Google uses in its sports card
 // Maps our full team name → short abbreviation variants Google might display
@@ -87,10 +87,28 @@ export async function scrapeMatchResult(team1, team2, date) {
 
   console.log(`\n🔍 Searching: ${query}`);
 
-  const browser = await chromium.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-blink-features=AutomationControlled'],
-  });
+  let browser;
+  if (process.env.VERCEL || process.env.AWS_REGION) {
+    // Vercel Serverless environment: Use lightweight chromium
+    const chromium = (await import('@sparticuz/chromium')).default;
+    const { chromium: playwrightCore } = await import('playwright-core');
+    
+    // Sparticuz requires you to pass the executablePath and args
+    browser = await playwrightCore.launch({
+      args: [...chromium.args, '--disable-blink-features=AutomationControlled'],
+      defaultViewport: chromium.defaultViewport,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
+    });
+  } else {
+    // Local development: Use full playwright
+    const { chromium: localChromium } = await import('playwright');
+    browser = await localChromium.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-blink-features=AutomationControlled'],
+    });
+  }
+
   const context = await browser.newContext({
     userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
     locale: 'en-IN',
