@@ -1,0 +1,92 @@
+import { isBefore, addDays, parse } from 'date-fns';
+import { IPL_SCHEDULE, BET_AMOUNT } from './constants';
+
+/**
+ * Compute the list of active (bettable) matches for the next 2 days.
+ * Pure function — same inputs always produce same output.
+ *
+ * @param {Object[]} customMatches  - custom match docs from Firestore
+ * @param {number}   _tick          - minute tick to force re-evaluation
+ * @returns {Object[]} enriched match objects with `teams` array
+ */
+export function computeActiveMatches(customMatches, _tick) {
+  const now = new Date();
+  const twoDaysLater = addDays(now, 2);
+
+  const allSources = [
+    ...IPL_SCHEDULE.map(m => ({ ...m, id: `ipl-2025-${m.num}` })),
+    ...customMatches,
+  ];
+
+  return allSources
+    .filter(m => {
+      const matchTime = parse(
+        `${m.date} 2026 ${m.time}`,
+        'MMMM d yyyy h:mm a',
+        new Date()
+      );
+      return isBefore(now, matchTime) && isBefore(matchTime, twoDaysLater);
+    })
+    .map(m => {
+      if (!m.teams) {
+        const [t1, t2] = m.fixture.split(' vs ');
+        return { ...m, teams: [t1, t2] };
+      }
+      return m;
+    });
+}
+
+/**
+ * Compute per-user wins and earnings from votes and settled results.
+ * Pure function — no side effects.
+ *
+ * @param {Object[]} votes
+ * @param {Object[]} matchResults
+ * @returns {{ [userName: string]: { wins: number, earnings: number, photo: string } }}
+ */
+export function computeSquadStats(votes, matchResults) {
+  const stats = {};
+
+  // Seed all users who have ever voted
+  votes.forEach(v => {
+    if (!stats[v.user_name]) {
+      stats[v.user_name] = { wins: 0, earnings: 0, photo: v.user_photo };
+    }
+  });
+
+  matchResults.forEach(res => {
+    const { match_id: matchId, winner_team: winner } = res;
+    const mVotes = votes.filter(v => v.match_id === matchId);
+    if (mVotes.length === 0) return;
+
+    const pot = mVotes.length * BET_AMOUNT;
+    const winnersCount = mVotes.filter(v => v.chosen_team === winner).length;
+
+    if (winnersCount > 0 && winnersCount < mVotes.length) {
+      const individualPayout = Math.floor(pot / winnersCount);
+      mVotes.forEach(v => {
+        if (v.chosen_team === winner) {
+          stats[v.user_name].wins += 1;
+          stats[v.user_name].earnings += (individualPayout - BET_AMOUNT);
+        } else {
+          stats[v.user_name].earnings -= BET_AMOUNT;
+        }
+      });
+    }
+  });
+
+  return stats;
+}
+
+/**
+ * Extract a single user's stats from the full squad stats map.
+ *
+ * @param {import('firebase/auth').User | null} user
+ * @param {ReturnType<typeof computeSquadStats>} squadStats
+ * @returns {{ wins: number, earnings: number }}
+ */
+export function computeUserStats(user, squadStats) {
+  const name = user?.displayName;
+  if (!name || !squadStats[name]) return { wins: 0, earnings: 0 };
+  return squadStats[name];
+}
