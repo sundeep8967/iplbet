@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import {
   collection, addDoc, onSnapshot,
-  query, orderBy, where, updateDoc, doc, deleteDoc
+  query, orderBy, where, updateDoc, doc, deleteDoc, setDoc
 } from 'firebase/firestore';
 import { IPL_SCHEDULE } from '../models/constants';
 
@@ -47,6 +47,30 @@ export function subscribeCustomMatches(callback) {
   return onSnapshot(q, snap =>
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() })))
   );
+}
+
+/**
+ * Subscribe to the dynamic list of admin users.
+ * @param {(admins: Object[]) => void} callback
+ * @returns {() => void} unsubscribe
+ */
+export function subscribeAdmins(callback) {
+  const q = query(collection(db, 'admins'));
+  return onSnapshot(q, snap => {
+    callback(snap.docs.map(doc => ({ id: doc.id, email: doc.data().email })));
+  });
+}
+
+/**
+ * Subscribe to all users in the system.
+ * @param {(users: Object[]) => void} callback
+ * @returns {() => void} unsubscribe
+ */
+export function subscribeAllUsers(callback) {
+  const q = query(collection(db, 'users'));
+  return onSnapshot(q, snap => {
+    callback(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  });
 }
 
 // ─── MUTATIONS ───────────────────────────────────────────────────────────────
@@ -167,4 +191,37 @@ export async function shareLink() {
   }
   navigator.clipboard.writeText(`${text} ${url}`);
   alert('App Link copied to clipboard!');
+}
+
+/**
+ * Add an admin to Firestore.
+ * @param {string} email
+ */
+export async function addAdminUser(email) {
+  await addDoc(collection(db, 'admins'), {
+    email,
+    created_at: new Date().toISOString()
+  });
+}
+
+/**
+ * Remove an admin from Firestore.
+ * @param {string} adminId
+ */
+export async function removeAdminUser(adminId) {
+  await deleteDoc(doc(db, 'admins', adminId));
+}
+
+/**
+ * Save or update a user's basic info to Firestore registry.
+ * @param {import('firebase/auth').User} user
+ */
+export async function saveUserToDatabase(user) {
+  if (!user || !user.uid) return;
+  await setDoc(doc(db, 'users', user.uid), {
+    email: user.email,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+    last_login: new Date().toISOString()
+  }, { merge: true });
 }

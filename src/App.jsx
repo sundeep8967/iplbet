@@ -44,6 +44,10 @@ export default function App() {
     handleOverrideResult,
     handleDeleteMatch,
     handleShare,
+    adminList,
+    allUsers,
+    handleAddAdmin,
+    handleRemoveAdmin,
   } = useAppController();
 
   if (loading) return <div className="loading">Brewing your tea... 🍵</div>;
@@ -120,6 +124,10 @@ export default function App() {
                 activeMatches={activeMatches}
                 matchResults={matchResults}
                 isAdmin={isAdmin}
+                adminList={adminList}
+                allUsers={allUsers}
+                onAddAdmin={handleAddAdmin}
+                onRemoveAdmin={handleRemoveAdmin}
                 onViewHistory={() => setViewingHistoryFor(user.displayName)}
               />
             )}

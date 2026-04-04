@@ -86,6 +86,10 @@ export default function ProfileView({
   activeMatches,
   matchResults,
   isAdmin,
+  adminList = [],
+  allUsers = [],
+  onAddAdmin,
+  onRemoveAdmin,
   onViewHistory,
 }) {
   const [autoSettling, setAutoSettling] = useState({});
@@ -213,7 +217,46 @@ export default function ProfileView({
               ))}
             </div>
           )}
-
+          {/* ── Admin Management ── */}
+          <div style={{ marginBottom: '1.5rem', borderTop: '1px dashed var(--border)', paddingTop: '1.5rem' }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.75rem', textTransform: 'uppercase' }}>🔧 MANAGE ADMINS:</p>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
+              <select
+                id="newAdminEmail"
+                style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.75rem' }}
+                defaultValue=""
+              >
+                <option value="" disabled>Select User to Add...</option>
+                {allUsers.map(u => (
+                  <option key={u.id} value={u.email}>{u.displayName} ({u.email})</option>
+                ))}
+              </select>
+              <button
+                className="btn-primary"
+                style={{ padding: '0.5rem 1rem', fontSize: '0.7rem' }}
+                onClick={() => {
+                  const el = document.getElementById('newAdminEmail');
+                  if (el.value.trim()) {
+                    onAddAdmin(el.value.trim());
+                    el.value = '';
+                  }
+                }}
+              >
+                Add ➕
+              </button>
+            </div>
+            {adminList && adminList.map(a => (
+              <div key={a.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)', border: '1.5px solid var(--border)', padding: '0.5rem 0.75rem', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{a.email}</span>
+                <button
+                  style={{ background: 'var(--error)', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 8px', fontSize: '0.6rem', fontWeight: 800, cursor: 'pointer' }}
+                  onClick={() => onRemoveAdmin(a.id)}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
 
         </div>
       )}
