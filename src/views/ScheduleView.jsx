@@ -153,7 +153,9 @@ function AddMatchModal({ onClose, onAdd }) {
   );
 }
 
-function SettleModal({ match, onClose, onConfirm }) {
+function SettleModal({ match, onClose, onConfirm, onAutoSettle, autoState }) {
+  const busy = autoState === 'loading';
+
   return (
     <div className="modal-overlay fade-in" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
        <div className="glass-card" style={{ background: 'var(--card)', padding: '1.5rem', width: '90%', maxWidth: '350px' }}>
@@ -162,6 +164,28 @@ function SettleModal({ match, onClose, onConfirm }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
              <button className="btn-primary" style={{ padding: '0.6rem' }} onClick={() => onConfirm(match.teams[0])}>🏅 {match.teams[0]}</button>
              <button className="btn-primary" style={{ padding: '0.6rem' }} onClick={() => onConfirm(match.teams[1])}>🏅 {match.teams[1]}</button>
+             
+             <div style={{ margin: '0.5rem 0', textAlign: 'center', fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 800 }}>— OR —</div>
+
+             <button
+               className="btn-primary"
+               disabled={busy || autoState === 'done'}
+               style={{
+                 padding: '0.6rem',
+                 background: autoState === 'loading' ? 'var(--muted)'
+                           : autoState === 'done'    ? 'var(--teal)'
+                           : autoState === 'not_found' ? 'var(--error)'
+                           : 'var(--orange)',
+                 transition: 'background 0.2s',
+               }}
+               onClick={async () => {
+                 const ok = await onAutoSettle(match);
+                 if (ok) onClose();
+               }}
+             >
+               {busy ? '🔍 Searching Google…' : autoState === 'done' ? '✅ Settled!' : autoState === 'not_found' ? '⚠️ Result Not Found' : autoState === 'error' ? '❌ Error' : '🤖 Rerun Auto Settle'}
+             </button>
+
              <button className="btn-primary" style={{ background: 'transparent', color: 'var(--muted)', marginTop: '0.5rem', boxShadow: 'none' }} onClick={onClose}>Cancel</button>
           </div>
        </div>
@@ -191,12 +215,15 @@ export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchRes
         const existingResult = matchResults.find(r => r.match_id === m.id);
         await onSettle(m.id, data.winner, existingResult?.id);
         setAutoSettling(s => ({ ...s, [m.id]: 'done' }));
+        return true;
       } else {
         setAutoSettling(s => ({ ...s, [m.id]: 'not_found' }));
+        return false;
       }
     } catch (err) {
       console.error(err);
       setAutoSettling(s => ({ ...s, [m.id]: 'error' }));
+      return false;
     }
   };
 
@@ -236,11 +263,19 @@ export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchRes
           onAdd={async (data) => { await onAddMatch(data); setShowModal(false); }}
         />
       )}
-      {settlingMatch && <SettleModal match={settlingMatch} onClose={() => setSettlingMatch(null)} onConfirm={(winner) => {
-         const existingResult = matchResults.find(r => r.match_id === settlingMatch.id);
-         onSettle(settlingMatch.id, winner, existingResult?.id);
-         setSettlingMatch(null);
-      }} />}
+      {settlingMatch && (
+        <SettleModal 
+          match={settlingMatch} 
+          autoState={autoSettling[settlingMatch.id]}
+          onAutoSettle={handleAutoSettle}
+          onClose={() => setSettlingMatch(null)} 
+          onConfirm={(winner) => {
+             const existingResult = matchResults.find(r => r.match_id === settlingMatch.id);
+             onSettle(settlingMatch.id, winner, existingResult?.id);
+             setSettlingMatch(null);
+          }} 
+        />
+      )}
 
       <div className="schedule-list">
         {allMatches.map((m, index) => {
