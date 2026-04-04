@@ -81,6 +81,7 @@ export default function BetView({ matches, votes, squadStats, user, handleVote }
           <p style={{ textAlign: 'center', opacity: 0.5 }}>No matches open for betting right now. Check back tomorrow!</p>
         ) : displayedMatches.map(m => {
           const matchVotes = votes.filter(v => v.match_id === m.id);
+          const myVote     = matchVotes.find(v => v.user_name === user.displayName);
 
           return (
             <div key={m.id} className="glass-card">
@@ -100,10 +101,17 @@ export default function BetView({ matches, votes, squadStats, user, handleVote }
                     </div>
                     <button
                       className="btn-primary"
-                      style={{ padding: '0.5rem', width: '100%', marginBottom: '1rem' }}
+                      style={{ 
+                        padding: '0.5rem', 
+                        width: '100%', 
+                        marginBottom: '1rem',
+                        background: myVote?.chosen_team === m.teams[0] ? 'var(--teal)' : 'var(--surface)',
+                        border: myVote?.chosen_team === m.teams[0] ? '2px solid var(--dark)' : '1px solid var(--border)',
+                        color: myVote?.chosen_team === m.teams[0] ? 'white' : 'var(--text)'
+                      }}
                       onClick={() => handleVote(m.id, m.teams[0])}
                     >
-                      PICK
+                      {myVote?.chosen_team === m.teams[0] ? 'PICKED ✅' : 'PICK'}
                     </button>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
                       {squadMembers
@@ -131,10 +139,17 @@ export default function BetView({ matches, votes, squadStats, user, handleVote }
                     </div>
                     <button
                       className="btn-primary"
-                      style={{ padding: '0.5rem', width: '100%', marginBottom: '1rem' }}
+                      style={{ 
+                        padding: '0.5rem', 
+                        width: '100%', 
+                        marginBottom: '1rem',
+                        background: myVote?.chosen_team === m.teams[1] ? 'var(--teal)' : 'var(--surface)',
+                        border: myVote?.chosen_team === m.teams[1] ? '2px solid var(--dark)' : '1px solid var(--border)',
+                        color: myVote?.chosen_team === m.teams[1] ? 'white' : 'var(--text)'
+                      }}
                       onClick={() => handleVote(m.id, m.teams[1])}
                     >
-                      PICK
+                      {myVote?.chosen_team === m.teams[1] ? 'PICKED ✅' : 'PICK'}
                     </button>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
                       {squadMembers
