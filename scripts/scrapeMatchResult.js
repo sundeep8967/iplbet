@@ -26,8 +26,12 @@ const TEAM_ALIASES = {
 };
 
 /**
- * Given a raw result text from Google (e.g. "RCB won by 7 wickets"),
+ * Given a raw result text from Google (e.g. "DC won by 6 wickets"),
  * map it back to the canonical full team name.
+ *
+ * IMPORTANT: we REQUIRE the text to also mention the OTHER team so that
+ * stray "MI won" headlines from unrelated matches on the same page can't
+ * pollute the result.
  *
  * @param {string} text
  * @param {string} team1  full name
@@ -36,16 +40,37 @@ const TEAM_ALIASES = {
  */
 function resolveWinner(text, team1, team2) {
   const lower = text.toLowerCase();
-  for (const [fullName, aliases] of Object.entries(TEAM_ALIASES)) {
-    // Only consider the two teams that played
-    if (fullName !== team1 && fullName !== team2) continue;
-    for (const alias of aliases) {
-      if (lower.includes(alias.toLowerCase())) {
-        return fullName;
-      }
-    }
+
+  const aliases1 = TEAM_ALIASES[team1] ?? [team1];
+  const aliases2 = TEAM_ALIASES[team2] ?? [team2];
+
+  // Require 'won by' — filters out toss results, "who won?" questions, etc.
+  const wonByIdx = lower.indexOf('won by');
+  if (wonByIdx === -1) return null;
+
+  // Both teams must appear somewhere in the text (confirms it's this fixture)
+  const team1Mentioned = aliases1.some(a => lower.includes(a.toLowerCase()));
+  const team2Mentioned = aliases2.some(a => lower.includes(a.toLowerCase()));
+  if (!team1Mentioned || !team2Mentioned) return null;
+
+  // Winner is the alias that appears CLOSEST before 'won by' (within 60 chars)
+  // This handles scorecard blobs like: "CSK 209/5 ... PBKS 210/5 PBKS won by 5 wkts"
+  const WINDOW = 60;
+  const contextBefore = lower.slice(Math.max(0, wonByIdx - WINDOW), wonByIdx);
+
+  let bestWinner = null;
+  let bestIdx    = -1;
+
+  for (const alias of aliases1) {
+    const idx = contextBefore.lastIndexOf(alias.toLowerCase());
+    if (idx !== -1 && idx > bestIdx) { bestIdx = idx; bestWinner = team1; }
   }
-  return null;
+  for (const alias of aliases2) {
+    const idx = contextBefore.lastIndexOf(alias.toLowerCase());
+    if (idx !== -1 && idx > bestIdx) { bestIdx = idx; bestWinner = team2; }
+  }
+
+  return bestWinner;
 }
 
 /**
@@ -120,19 +145,33 @@ export async function scrapeMatchResult(team1, team2, date) {
       } catch (_) {}
     }
 
-    // ── STRATEGY 2: Full body text scan ─────────────────────────────────────
-    // Get entire rendered page text and scan line by line
-    const bodyText = await page.evaluate(() => document.body.innerText);
-    const lines = bodyText.split('\n').map(l => l.trim()).filter(Boolean);
+    // ── STRATEGY 2: Sliding-window body scan ─────────────────────────────────
+    // Google's sports card splits across multiple lines, e.g.:
+    //   "KKR  183/4"
+    //   "SRH  179/8"
+    //   "KKR won by 4 wickets"
+    // A single-line scan misses this. We join every N consecutive lines into
+    // a chunk and check each chunk for both teams + "won by".
+    const aliases1 = TEAM_ALIASES[team1] ?? [team1];
+    const aliases2 = TEAM_ALIASES[team2] ?? [team2];
 
-    for (const line of lines) {
-      if (line.toLowerCase().includes('won')) {
-        console.log(`  📝 Body scan match: "${line}"`);
-        const winner = resolveWinner(line, team1, team2);
-        if (winner) {
-          console.log(`  🏆 Winner resolved: ${winner}`);
-          return winner;
-        }
+    const mentionsTeam = (text, aliases) =>
+      aliases.some(a => text.toLowerCase().includes(a.toLowerCase()));
+
+    const bodyText = await page.evaluate(() => document.body.innerText);
+    const lines    = bodyText.split('\n').map(l => l.trim()).filter(Boolean);
+
+    const WINDOW_SIZE = 6; // join up to 6 consecutive lines into one chunk
+    for (let i = 0; i < lines.length; i++) {
+      const chunk = lines.slice(i, i + WINDOW_SIZE).join(' ');
+      const lower = chunk.toLowerCase();
+      if (!lower.includes('won by')) continue;
+      if (!mentionsTeam(chunk, aliases1) || !mentionsTeam(chunk, aliases2)) continue;
+      console.log(`  📝 Window match [${i}–${i + WINDOW_SIZE - 1}]: "${chunk.slice(0, 160)}"`);
+      const winner = resolveWinner(chunk, team1, team2);
+      if (winner) {
+        console.log(`  🏆 Winner resolved: ${winner}`);
+        return winner;
       }
     }
 

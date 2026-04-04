@@ -156,7 +156,7 @@ function AddMatchModal({ onClose, onAdd }) {
 function SettleModal({ match, onClose, onConfirm }) {
   return (
     <div className="modal-overlay fade-in" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-       <div className="glass-card" style={{ background: '#FFFBF0', padding: '1.5rem', width: '90%', maxWidth: '350px' }}>
+       <div className="glass-card" style={{ background: 'var(--card)', padding: '1.5rem', width: '90%', maxWidth: '350px' }}>
           <h3 style={{ fontFamily: "'Baloo 2', sans-serif", fontSize: '1.2rem', marginBottom: '1rem', textAlign: 'center' }}>Confirm Winner 🏆</h3>
           <p style={{ textAlign: 'center', fontSize: '0.85rem', marginBottom: '1.5rem', opacity: 0.8 }}>Choose the winning team for:<br/><strong>{match.fixture}</strong></p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -170,11 +170,44 @@ function SettleModal({ match, onClose, onConfirm }) {
 }
 
 export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchResults, onSettle, onDeleteMatch }) {
-  const [showModal, setShowModal] = useState(false);
+  const [showModal, setShowModal]     = useState(false);
   const [settlingMatch, setSettlingMatch] = useState(null);
+  const [autoSettling, setAutoSettling]   = useState({}); // matchId → 'loading'|'done'|'not_found'|'error'
   const now      = new Date();
   const todayStr = format(now, 'MMMM d');
   const scrollRef = React.useRef(null);
+
+  const handleAutoSettle = async (m) => {
+    setAutoSettling(s => ({ ...s, [m.id]: 'loading' }));
+    try {
+      const [team1, team2] = m.fixture.split(' vs ');
+      const res  = await fetch('/api/scrape-result', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ team1, team2, date: m.date }),
+      });
+      const data = await res.json();
+      if (data.winner) {
+        const existingResult = matchResults.find(r => r.match_id === m.id);
+        await onSettle(m.id, data.winner, existingResult?.id);
+        setAutoSettling(s => ({ ...s, [m.id]: 'done' }));
+      } else {
+        setAutoSettling(s => ({ ...s, [m.id]: 'not_found' }));
+      }
+    } catch (err) {
+      console.error(err);
+      setAutoSettling(s => ({ ...s, [m.id]: 'error' }));
+    }
+  };
+
+  const autoLabel = (id) => {
+    const state = autoSettling[id];
+    if (state === 'loading')   return '🔍 Searching…';
+    if (state === 'done')      return '✅ Settled!';
+    if (state === 'not_found') return '⚠️ Not found';
+    if (state === 'error')     return '❌ Error';
+    return '🤖 Auto';
+  };
 
   React.useEffect(() => {
     if (scrollRef.current) {
@@ -279,9 +312,32 @@ export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchRes
                 )}
 
                 {isAdmin && isPast && !result && m.teams && (
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <button className="btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.65rem', width: '100%', border: '2px solid var(--dark)', background: '#fff', color: 'var(--dark)' }} onClick={() => setSettlingMatch(m)}>
-                       🏅 SETTLE MATCH
+                  <div style={{ marginTop: '0.5rem', display: 'flex', gap: '6px' }}>
+                    {/* Manual settle */}
+                    <button
+                      className="btn-primary"
+                      style={{ flex: 1, padding: '0.3rem 0.5rem', fontSize: '0.62rem', background: 'var(--surface)', color: 'var(--text)' }}
+                      onClick={() => setSettlingMatch(m)}
+                    >
+                      🏅 Manual
+                    </button>
+                    {/* Auto-settle via Playwright scraper */}
+                    <button
+                      className="btn-primary"
+                      disabled={autoSettling[m.id] === 'loading' || autoSettling[m.id] === 'done'}
+                      style={{
+                        flex: 2,
+                        padding: '0.3rem 0.5rem',
+                        fontSize: '0.62rem',
+                        background: autoSettling[m.id] === 'loading' ? 'var(--muted)'
+                                  : autoSettling[m.id] === 'done'    ? 'var(--teal)'
+                                  : autoSettling[m.id] === 'not_found' ? 'var(--error)'
+                                  : 'var(--orange)',
+                        transition: 'background 0.2s',
+                      }}
+                      onClick={() => handleAutoSettle(m)}
+                    >
+                      {autoLabel(m.id)}
                     </button>
                   </div>
                 )}

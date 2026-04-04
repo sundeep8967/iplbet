@@ -16,29 +16,38 @@
  *   30 13,14,15,16,17,18,19 * * * cd /path/to/iplbet && node scripts/autoSettle.js
  */
 
-import { createRequire }   from 'module';
+import { createRequire }          from 'module';
+import { readFileSync, existsSync } from 'fs';
 import { parse, isBefore, addHours } from 'date-fns';
 
 import { scrapeMatchResult } from './scrapeMatchResult.js';
 
 // ── Firebase Admin Setup ──────────────────────────────────────────────────────
-// We use createRequire because firebase-admin still ships as CJS
 const require = createRequire(import.meta.url);
 const admin   = require('firebase-admin');
 
-// Path to the service account JSON you downloaded from Firebase Console
-const SERVICE_ACCOUNT_PATH = new URL('./serviceAccount.json', import.meta.url).pathname;
+let serviceAccount;
+const localPath = new URL('./serviceAccount.json', import.meta.url).pathname;
+
+if (existsSync(localPath)) {
+  // Local dev: read from file (gitignored)
+  serviceAccount = JSON.parse(readFileSync(localPath, 'utf8'));
+} else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  // GitHub Actions: injected as a repository secret
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} else {
+  console.error('❌  No Firebase credentials found.');
+  console.error('    • Locally:         add scripts/serviceAccount.json');
+  console.error('    • GitHub Actions:  add FIREBASE_SERVICE_ACCOUNT repository secret');
+  process.exit(1);
+}
 
 if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(
-    (await import('fs')).default.readFileSync(SERVICE_ACCOUNT_PATH, 'utf8')
-  );
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-  });
+  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 }
 
 const db = admin.firestore();
+
 
 // ── IPL Schedule (source of truth for match timing) ───────────────────────────
 // Import from your model so there's only one place to update

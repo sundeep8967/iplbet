@@ -62,7 +62,7 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
         </div>
       </div>
 
-      <div className="glass-card fade-in" style={{ padding: '1.5rem', background: '#FFFBF0' }}>
+      <div className="glass-card fade-in" style={{ padding: '1.5rem', background: 'var(--surface)' }}>
          <h4 style={{ fontFamily: "'Baloo 2', sans-serif", borderBottom: '2.5px dashed var(--border)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
            MY BETS 📜
          </h4>
