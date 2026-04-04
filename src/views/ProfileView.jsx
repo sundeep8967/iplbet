@@ -94,18 +94,6 @@ export default function ProfileView({
 }) {
   const [autoSettling, setAutoSettling] = useState({});
 
-  // Deduplicated latest results for the override panel
-  const latestResults = (() => {
-    const byMatch = new Map();
-    matchResults.forEach(r => {
-      const ex = byMatch.get(r.match_id);
-      if (!ex || r.settled_at > ex.settled_at) byMatch.set(r.match_id, r);
-    });
-    return Array.from(byMatch.values())
-      .sort((a, b) => b.settled_at.localeCompare(a.settled_at))
-      .slice(0, 15);
-  })();
-
   // Auto-settle a single match by calling the local settle server
   const handleAutoSettle = async (match) => {
     setAutoSettling(s => ({ ...s, [match.id]: 'loading' }));
@@ -199,24 +187,7 @@ export default function ProfileView({
             })}
           </div>
 
-          {/* ── Override settled results ── */}
-          {latestResults.length > 0 && (
-            <div style={{ marginBottom: '1.5rem' }}>
-              <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.5rem', color: 'var(--error)' }}>
-                ✏️ OVERRIDE SETTLED RESULTS:
-              </p>
-              <p style={{ fontSize: '0.62rem', opacity: 0.6, marginBottom: '0.75rem' }}>
-                Tap Override on any row to correct a wrong result. Stats recalculate instantly.
-              </p>
-              {latestResults.map(result => (
-                <OverrideRow
-                  key={result.match_id + result.settled_at}
-                  result={result}
-                  onOverride={onOverrideResult}
-                />
-              ))}
-            </div>
-          )}
+
           {/* ── Admin Management ── */}
           <div style={{ marginBottom: '1.5rem', borderTop: '1px dashed var(--border)', paddingTop: '1.5rem' }}>
             <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.75rem', textTransform: 'uppercase' }}>🔧 MANAGE ADMINS:</p>
