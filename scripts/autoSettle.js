@@ -53,7 +53,7 @@ const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_I
 const { IPL_SCHEDULE } = await import('../src/models/constants.js');
 
 // How many hours after match start before we try to settle
-const HOURS_AFTER_START = 4.5;
+const HOURS_AFTER_START = 3.5;
 
 // ─────────────────────────────────────────────────────────────────────────────
 
