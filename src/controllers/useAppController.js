@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { isBefore, addHours, parse, subMinutes, format } from 'date-fns';
+import { isBefore, addHours, addMinutes, parse, subMinutes, format } from 'date-fns';
 
 // Services
 import { onAuthChanged, loginWithGoogle, logoutUser } from '../services/authService';
@@ -161,9 +161,9 @@ export function useAppController() {
     const match = allMatches.find(m => m.id === matchId);
     if (match) {
       const matchTime = parse(`${match.date} 2026 ${match.time}`, 'MMMM d yyyy h:mm a', new Date());
-      const settleLockTime = addHours(matchTime, 4);
+      const settleLockTime = addMinutes(matchTime, 210);
       if (isBefore(new Date(), settleLockTime)) {
-        alert(`FORBIDDEN: Match started less than 4 hours ago. Settle period opens at ${format(settleLockTime, 'h:mm a')}.`);
+        alert(`FORBIDDEN: Match started less than 3h 30m ago. Settle period opens at ${format(settleLockTime, 'h:mm a')}.`);
         return;
       }
     }
