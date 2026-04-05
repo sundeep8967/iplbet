@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { isBefore, parse, subMinutes } from 'date-fns';
+import { isBefore, addHours, parse, subMinutes, format } from 'date-fns';
 
 // Services
 import { onAuthChanged, loginWithGoogle, logoutUser } from '../services/authService';
@@ -157,6 +157,16 @@ export function useAppController() {
   };
 
   const handleFinalizeWinner = async (matchId, winner, existingResultId) => {
+    // 1. Validation: Match must have started at least 4 hours ago (IPL match duration buffer)
+    const match = allMatches.find(m => m.id === matchId);
+    if (match) {
+      const matchTime = parse(`${match.date} 2026 ${match.time}`, 'MMMM d yyyy h:mm a', new Date());
+      const settleLockTime = addHours(matchTime, 4);
+      if (isBefore(new Date(), settleLockTime)) {
+        alert(`FORBIDDEN: Match started less than 4 hours ago. Settle period opens at ${format(settleLockTime, 'h:mm a')}.`);
+        return;
+      }
+    }
     await finalizeWinnerService(matchId, winner, existingResultId);
   };
 

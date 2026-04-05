@@ -59,6 +59,19 @@ export const IPL_TEAMS = [
   'Sunrisers Hyderabad',
 ];
 
+export const TEAM_ACRONYMS = {
+  'Chennai Super Kings': 'CSK',
+  'Delhi Capitals': 'DC',
+  'Gujarat Titans': 'GT',
+  'Kolkata Knight Riders': 'KKR',
+  'Lucknow Super Giants': 'LSG',
+  'Mumbai Indians': 'MI',
+  'Punjab Kings': 'PBKS',
+  'Rajasthan Royals': 'RR',
+  'Royal Challengers Bengaluru': 'RCB',
+  'Sunrisers Hyderabad': 'SRH',
+};
+
 export const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',

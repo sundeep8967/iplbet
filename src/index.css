@@ -328,7 +328,9 @@ body {
 }
 
 @media (max-width: 480px) {
-  .app-container { padding: 1rem; }
+  .app-container { 
+    padding: 1.5rem 1rem calc(120px + env(safe-area-inset-bottom)); 
+  }
   h1 { font-size: 1.8rem; }
 }
 
