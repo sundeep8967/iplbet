@@ -24,7 +24,7 @@ import {
 
 // Models
 import { computeActiveMatches, computeOngoingMatch, computeSquadStats, computeUserStats } from '../models/statsModel';
-import { BET_AMOUNT, IPL_SCHEDULE } from '../models/constants';
+import { BET_AMOUNT, BET_LOCK_MINUTES, IPL_SCHEDULE } from '../models/constants';
 
 /**
  * useAppController
@@ -53,9 +53,9 @@ export function useAppController() {
   // 1. Auth listener
   useEffect(() => onAuthChanged(u => { setUser(u); setLoading(false); }), []);
 
-  // 2. Minute tick
+  // 2. Heartbeat tick (every 5 seconds for precise bet locking)
   useEffect(() => {
-    const id = setInterval(() => setTick(t => t + 1), 60_000);
+    const id = setInterval(() => setTick(t => t + 1), 5_000);
     return () => clearInterval(id);
   }, []);
 
@@ -125,9 +125,9 @@ export function useAppController() {
         'MMMM d yyyy h:mm a',
         new Date()
       );
-      const lockTime = subMinutes(matchTime, 31);
+      const lockTime = subMinutes(matchTime, BET_LOCK_MINUTES);
       if (!isBefore(new Date(), lockTime)) {
-        alert('POLL CLOSED — Bets are locked 31 minutes prior to start!');
+        alert(`POLL CLOSED — Bets lock exactly ${BET_LOCK_MINUTES} minutes prior to start!`);
         return;
       }
     }
@@ -135,8 +135,8 @@ export function useAppController() {
     try {
       const existing = votes.find(v => v.match_id === matchId && v.user_name === user.displayName);
       if (existing && existing.chosen_team === team) {
-        // Same team clicked again -> Un-pick (remove from Firestore)
-        await removeVote(existing.id);
+        // Same team clicked again → Un-pick
+        await removeVote(matchId, user.uid);
         alert(`Unpicked ${team}!`);
         return;
       }

@@ -9,6 +9,7 @@ import { IPL_SCHEDULE } from '../models/constants';
 
 /**
  * Subscribe to real-time votes (newest first).
+ * Includes client-side deduplication to handle legacy duplicate records.
  * @param {(votes: Object[]) => void} callback
  * @returns {() => void} unsubscribe
  */
@@ -17,12 +18,17 @@ export function subscribeVotes(callback) {
   return onSnapshot(q, snap => {
     const allVotes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const uniqueVotesMap = new Map();
+    
+    // Since records are ordered by created_at DESC, the first one we see
+    // for a (user, match) pair is the authoritative latest pick.
     allVotes.forEach(v => {
-       const key = `${v.user_name}_${v.match_id}`;
-       if (!uniqueVotesMap.has(key)) {
-          uniqueVotesMap.set(key, v);
-       }
+      const userId = v.user_id || v.uid;
+      const key = `${userId}_${v.match_id}`;
+      if (userId && v.match_id && !uniqueVotesMap.has(key)) {
+        uniqueVotesMap.set(key, v);
+      }
     });
+
     callback(Array.from(uniqueVotesMap.values()));
   });
 }
@@ -91,31 +97,37 @@ export function subscribeAllUsers(callback) {
 
 /**
  * Cast a vote for a team in a match.
+ * Uses a deterministic doc ID (matchId_userId) to guarantee exactly
+ * one vote document per user per match — no more duplicates.
  * @param {import('firebase/auth').User} user
  * @param {string} matchId
  * @param {string} team
  */
 export async function addVote(user, matchId, team) {
-  await addDoc(collection(db, 'votes'), {
-    user_id:      user.uid,
-    user_name:    user.displayName,
-    user_photo:   user.photoURL,
-    match_id:     matchId,
-    chosen_team:  team,
-    created_at:   new Date().toISOString(),
+  const docId = `${matchId}_${user.uid}`;
+  await setDoc(doc(db, 'votes', docId), {
+    user_id:     user.uid,
+    user_name:   user.displayName,
+    user_photo:  user.photoURL,
+    match_id:    matchId,
+    chosen_team: team,
+    created_at:  new Date().toISOString(),
   });
-  console.log(`Voted successfully for ${team}!`);
+  console.log(`[Vote] ${user.displayName} → ${team} (match: ${matchId})`);
 }
 
 /**
- * Remove a vote from Firestore by document ID.
- * @param {string} voteId
+ * Remove a vote using the same deterministic doc ID.
+ * @param {string} matchId
+ * @param {string} userId
  */
-export async function removeVote(voteId) {
-  if (!voteId) return;
-  await deleteDoc(doc(db, 'votes', voteId));
-  console.log(`Unpicked successfully!`);
+export async function removeVote(matchId, userId) {
+  if (!matchId || !userId) return;
+  const docId = `${matchId}_${userId}`;
+  await deleteDoc(doc(db, 'votes', docId));
+  console.log(`[Vote] Unpicked for match ${matchId}`);
 }
+
 
 /**
  * Add a custom match to Firestore.

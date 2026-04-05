@@ -1,5 +1,5 @@
 import { isBefore, addDays, subMinutes, addHours, parse } from 'date-fns';
-import { IPL_SCHEDULE, BET_AMOUNT } from './constants';
+import { IPL_SCHEDULE, BET_AMOUNT, BET_LOCK_MINUTES } from './constants';
 
 /**
  * Compute the list of active (bettable) matches for the next 2 days.
@@ -25,7 +25,7 @@ export function computeActiveMatches(customMatches, _tick) {
         'MMMM d yyyy h:mm a',
         new Date()
       );
-      const lockTime = subMinutes(matchTime, 31);
+      const lockTime = subMinutes(matchTime, BET_LOCK_MINUTES);
       return isBefore(now, lockTime) && isBefore(matchTime, twoDaysLater);
     })
     .map(m => {
@@ -60,7 +60,7 @@ export function computeOngoingMatch(customMatches, matchResults, _tick) {
       'MMMM d yyyy h:mm a',
       new Date()
     );
-    const lockTime = subMinutes(matchTime, 31);
+    const lockTime = subMinutes(matchTime, BET_LOCK_MINUTES);
     const fallbackEnd = addHours(matchTime, 5); // safety fallback
 
     // Bets must be locked (past lockTime) and match must not be settled yet

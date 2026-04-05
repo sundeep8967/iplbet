@@ -126,6 +126,8 @@ export default function App() {
                 onOverrideResult={handleOverrideResult}
                 activeMatches={activeMatches}
                 matchResults={matchResults}
+                votes={votes}
+                allMatches={allMatches}
                 isAdmin={isAdmin}
                 adminList={adminList}
                 allUsers={allUsers}

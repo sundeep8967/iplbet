@@ -1,6 +1,7 @@
 // ─── DATA CONSTANTS ────────────────────────────────────────────────────────
 
 export const BET_AMOUNT = 10;
+export const BET_LOCK_MINUTES = 31;
 
 export const IPL_SCHEDULE = [
   { num: 1,  date: 'March 28',  time: '7:30 PM', fixture: 'Royal Challengers Bengaluru vs Sunrisers Hyderabad' },

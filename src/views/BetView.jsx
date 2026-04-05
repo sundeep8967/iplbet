@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { isBefore, parse, subMinutes } from 'date-fns';
+import { BET_LOCK_MINUTES } from '../models/constants';
 
 /**
  * MatchTimer — local sub-component, used only within BetView.
@@ -12,14 +13,16 @@ function MatchTimer({ match }) {
     const update = () => {
       const now       = new Date();
       const matchTime = parse(`${match.date} 2026 ${match.time}`, 'MMMM d yyyy h:mm a', new Date());
-      if (isBefore(now, matchTime)) {
-        const diff = matchTime - now;
+      const lockTime  = subMinutes(matchTime, BET_LOCK_MINUTES);
+
+      if (isBefore(now, lockTime)) {
+        const diff = lockTime - now;
         const h    = Math.floor(diff / 3_600_000);
         const m    = Math.floor((diff % 3_600_000) / 60_000);
         const s    = Math.floor((diff % 60_000) / 1_000);
         setTimeLeft(`${h}h ${m}m ${s}s`);
       } else {
-        setTimeLeft('CLOSED');
+        setTimeLeft('LOCKED');
       }
     };
     update();
@@ -28,8 +31,8 @@ function MatchTimer({ match }) {
   }, [match]);
 
   return (
-    <div style={{ color: timeLeft === 'CLOSED' ? 'var(--muted)' : 'var(--error)', fontWeight: 800, fontSize: '0.75rem' }}>
-      {timeLeft === 'CLOSED' ? '🔒 CLOSED' : `CLOSES IN: ${timeLeft}`}
+    <div style={{ color: timeLeft === 'LOCKED' ? 'var(--muted)' : 'var(--error)', fontWeight: 800, fontSize: '0.75rem' }}>
+      {timeLeft === 'LOCKED' ? '🔒 LOCKED' : `LOCKS IN: ${timeLeft}`}
     </div>
   );
 }
