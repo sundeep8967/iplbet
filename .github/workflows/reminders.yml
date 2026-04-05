@@ -31,4 +31,11 @@ jobs:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_PASS: ${{ secrets.GMAIL_PASS }}
-        run: node scripts/sendReminders.js
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Running in TEST MODE"
+            node scripts/testEmail.js
+          else
+            echo "Running standard time-check mode"
+            node scripts/sendReminders.js
+          fi
