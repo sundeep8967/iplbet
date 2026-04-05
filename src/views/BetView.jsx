@@ -126,7 +126,7 @@ function OngoingMatchCard({ match, votes, user }) {
   );
 }
 
-export default function BetView({ matches, votes, squadStats, user, handleVote, ongoingMatch }) {
+export default function BetView({ matches, votes, squadStats, user, handleVote, ongoingMatches }) {
   const [showAll, setShowAll] = useState(false);
 
   const firstDate        = matches.length > 0 ? matches[0].date : null;
@@ -140,9 +140,10 @@ export default function BetView({ matches, votes, squadStats, user, handleVote, 
   return (
     <div className="fade-in">
       {/* ONGOING MATCH — pinned at the top */}
-      {ongoingMatch && (
-        <OngoingMatchCard match={ongoingMatch} votes={votes} user={user} />
-      )}
+      {/* Ongoing Matches (Locked/Live) */}
+      {ongoingMatches.map(m => (
+        <OngoingMatchCard key={m.id} match={m} votes={votes} user={user} />
+      ))}
       <div style={{ position: 'relative', marginBottom: '1.5rem', borderRadius: '16px', overflow: 'hidden', height: '140px', border: '3px solid var(--border)' }}>
         <img 
           src="/bg_poster.jpeg" 

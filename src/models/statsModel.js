@@ -46,7 +46,7 @@ export function computeActiveMatches(customMatches, _tick) {
  * @param {Object[]} matchResults  - settled results from Firestore
  * @param {number}   _tick
  */
-export function computeOngoingMatch(customMatches, matchResults, _tick) {
+export function computeOngoingMatches(customMatches, matchResults, _tick) {
   const now = new Date();
 
   const allSources = [
@@ -54,7 +54,7 @@ export function computeOngoingMatch(customMatches, matchResults, _tick) {
     ...customMatches,
   ];
 
-  const ongoingMatches = allSources.filter(m => {
+  return allSources.filter(m => {
     const matchTime = parse(
       `${m.date} 2026 ${m.time}`,
       'MMMM d yyyy h:mm a',
@@ -76,8 +76,6 @@ export function computeOngoingMatch(customMatches, matchResults, _tick) {
     }
     return m;
   });
-
-  return ongoingMatches.length > 0 ? ongoingMatches[0] : null;
 }
 
 /**

@@ -23,7 +23,7 @@ import {
 } from '../services/firestoreService';
 
 // Models
-import { computeActiveMatches, computeOngoingMatch, computeSquadStats, computeUserStats } from '../models/statsModel';
+import { computeActiveMatches, computeOngoingMatches, computeSquadStats, computeUserStats } from '../models/statsModel';
 import { BET_AMOUNT, BET_LOCK_MINUTES, IPL_SCHEDULE } from '../models/constants';
 
 /**
@@ -98,8 +98,8 @@ export function useAppController() {
     [customMatches, tick]
   );
 
-  const ongoingMatch = useMemo(
-    () => computeOngoingMatch(customMatches, matchResults, tick),
+  const ongoingMatches = useMemo(
+    () => computeOngoingMatches(customMatches, matchResults, tick),
     [customMatches, matchResults, tick]
   );
 
@@ -224,7 +224,7 @@ export function useAppController() {
     matchResults,
     allMatches,
     activeMatches,
-    ongoingMatch,
+    ongoingMatches,
     squadStats,
     userStats,
     totalPot,

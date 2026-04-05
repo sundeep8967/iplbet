@@ -72,7 +72,7 @@ function OngoingMatchCardCompact({ match, votes, user }) {
   );
 }
 
-export default function HomeView({ user, stats, onShare, votes, matchResults, allMatches, ongoingMatch }) {
+export default function HomeView({ user, stats, onShare, votes, matchResults, allMatches, ongoingMatches }) {
   const BET_AMOUNT = 10;
   
   const myVotes = React.useMemo(() => {
@@ -160,9 +160,10 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
       </div>
 
       {/* ONGOING MATCH card — visible between header and stats once bets lock */}
-      {ongoingMatch && (
-        <OngoingMatchCardCompact match={ongoingMatch} votes={votes} user={user} />
-      )}
+      {/* Ongoing Matches (Locked/Live) */}
+      {ongoingMatches.map(m => (
+        <OngoingMatchCardCompact key={m.id} match={m} votes={votes} user={user} />
+      ))}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1.5rem' }}>
         <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>
