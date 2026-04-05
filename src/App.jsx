@@ -33,6 +33,7 @@ export default function App() {
     matchResults,
     allMatches,
     activeMatches,
+    ongoingMatch,
     squadStats,
     userStats,
 
@@ -86,6 +87,7 @@ export default function App() {
                 votes={votes}
                 matchResults={matchResults}
                 allMatches={allMatches}
+                ongoingMatch={ongoingMatch}
               />
             )}
 
@@ -96,6 +98,7 @@ export default function App() {
                 squadStats={squadStats}
                 user={user}
                 handleVote={handleVote}
+                ongoingMatch={ongoingMatch}
               />
             )}
 

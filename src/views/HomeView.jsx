@@ -2,7 +2,77 @@ import React from 'react';
 import { Share2 } from 'lucide-react';
 import { parse } from 'date-fns';
 
-export default function HomeView({ user, stats, onShare, votes, matchResults, allMatches }) {
+// Reuse the same locked-picks card shown in BetView
+function OngoingMatchCardCompact({ match, votes, user }) {
+  // Build squad from votes
+  const map = new Map();
+  votes.forEach(v => { if (!map.has(v.user_name)) map.set(v.user_name, { name: v.user_name, photo: v.user_photo }); });
+  if (user && !map.has(user.displayName)) map.set(user.displayName, { name: user.displayName, photo: user.photoURL });
+  const squadMembers = Array.from(map.values());
+
+  const matchVotes   = votes.filter(v => v.match_id === match.id);
+  const team1Pickers = squadMembers.filter(m => matchVotes.find(v => v.user_name === m.name && v.chosen_team === match.teams[0]));
+  const team2Pickers = squadMembers.filter(m => matchVotes.find(v => v.user_name === m.name && v.chosen_team === match.teams[1]));
+  const missed       = squadMembers.filter(m => !matchVotes.find(v => v.user_name === m.name));
+
+  const pickerRow = (pickers) => (
+    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center', minHeight: '36px' }}>
+      {pickers.length === 0
+        ? <span style={{ fontSize: '0.65rem', opacity: 0.35, margin: 'auto' }}>—</span>
+        : pickers.map(m => (
+            <div key={m.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+              <img src={m.photo} referrerPolicy="no-referrer" alt={m.name}
+                style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2.5px solid var(--teal)' }} />
+              <span style={{ fontSize: '0.55rem', fontWeight: 800 }}>{m.name.split(' ')[0]}</span>
+            </div>
+          ))
+      }
+    </div>
+  );
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, var(--card), var(--surface))',
+      border: '2.5px solid var(--teal)',
+      borderRadius: '18px',
+      overflow: 'hidden',
+      marginBottom: '1.5rem',
+      boxShadow: '0 4px 24px rgba(20,184,166,0.18)'
+    }}>
+      <div style={{ background: 'var(--teal)', padding: '0.55rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ color: 'white', fontWeight: 900, fontSize: '0.72rem', letterSpacing: '0.07em' }}>🔴 LIVE — BETS LOCKED</span>
+        <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.62rem' }}>{match.date} · {match.time}</span>
+      </div>
+      <div style={{ padding: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontWeight: 900, fontSize: '0.75rem', marginBottom: '0.5rem' }}>{match.teams[0]}</div>
+          {pickerRow(team1Pickers)}
+        </div>
+        <div style={{ fontSize: '0.7rem', fontWeight: 900, opacity: 0.2, margin: 'auto 0', paddingTop: '1rem' }}>VS</div>
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontWeight: 900, fontSize: '0.75rem', marginBottom: '0.5rem' }}>{match.teams[1]}</div>
+          {pickerRow(team2Pickers)}
+        </div>
+      </div>
+      {missed.length > 0 && (
+        <div style={{ borderTop: '1.5px dashed var(--border)', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--error)', whiteSpace: 'nowrap' }}>AUTO −₹10:</span>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {missed.map(m => (
+              <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <img src={m.photo} referrerPolicy="no-referrer" alt={m.name}
+                  style={{ width: '20px', height: '20px', borderRadius: '50%', opacity: 0.45, filter: 'grayscale(1)' }} />
+                <span style={{ fontSize: '0.58rem', fontWeight: 700, opacity: 0.6 }}>{m.name.split(' ')[0]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function HomeView({ user, stats, onShare, votes, matchResults, allMatches, ongoingMatch }) {
   const BET_AMOUNT = 10;
   
   const myVotes = React.useMemo(() => {
@@ -88,6 +158,11 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
           <p style={{ fontSize: '0.85rem', marginTop: '0.3rem', marginBottom: 0 }}>Pick your winners and climb the global leaderboard!</p>
         </div>
       </div>
+
+      {/* ONGOING MATCH card — visible between header and stats once bets lock */}
+      {ongoingMatch && (
+        <OngoingMatchCardCompact match={ongoingMatch} votes={votes} user={user} />
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1.5rem' }}>
         <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>

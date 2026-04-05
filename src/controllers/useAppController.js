@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { isBefore, parse } from 'date-fns';
+import { isBefore, parse, subMinutes } from 'date-fns';
 
 // Services
 import { onAuthChanged, loginWithGoogle, logoutUser } from '../services/authService';
@@ -23,7 +23,7 @@ import {
 } from '../services/firestoreService';
 
 // Models
-import { computeActiveMatches, computeSquadStats, computeUserStats } from '../models/statsModel';
+import { computeActiveMatches, computeOngoingMatch, computeSquadStats, computeUserStats } from '../models/statsModel';
 import { BET_AMOUNT, IPL_SCHEDULE } from '../models/constants';
 
 /**
@@ -98,6 +98,11 @@ export function useAppController() {
     [customMatches, tick]
   );
 
+  const ongoingMatch = useMemo(
+    () => computeOngoingMatch(customMatches, matchResults, tick),
+    [customMatches, matchResults, tick]
+  );
+
   const squadStats = useMemo(
     () => computeSquadStats(votes, matchResults),
     [votes, matchResults]
@@ -120,8 +125,9 @@ export function useAppController() {
         'MMMM d yyyy h:mm a',
         new Date()
       );
-      if (!isBefore(new Date(), matchTime)) {
-        alert('POLL CLOSED — this match has already started!');
+      const lockTime = subMinutes(matchTime, 31);
+      if (!isBefore(new Date(), lockTime)) {
+        alert('POLL CLOSED — Bets are locked 31 minutes prior to start!');
         return;
       }
     }
@@ -208,6 +214,7 @@ export function useAppController() {
     matchResults,
     allMatches,
     activeMatches,
+    ongoingMatch,
     squadStats,
     userStats,
     totalPot,

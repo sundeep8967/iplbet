@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { isBefore, parse } from 'date-fns';
+import { isBefore, parse, subMinutes } from 'date-fns';
 
 /**
  * MatchTimer — local sub-component, used only within BetView.
@@ -48,10 +48,85 @@ function buildSquadMembers(votes, user) {
   return Array.from(map.values());
 }
 
-export default function BetView({ matches, votes, squadStats, user, handleVote }) {
+/** Pinned card shown when a match is locked and in progress until settled */
+function OngoingMatchCard({ match, votes, user }) {
+  const matchVotes  = votes.filter(v => v.match_id === match.id);
+  const squadMembers = buildSquadMembers(votes, user);
+
+  const team1Pickers = squadMembers.filter(m => matchVotes.find(v => v.user_name === m.name && v.chosen_team === match.teams[0]));
+  const team2Pickers = squadMembers.filter(m => matchVotes.find(v => v.user_name === m.name && v.chosen_team === match.teams[1]));
+  const missed       = squadMembers.filter(m => !matchVotes.find(v => v.user_name === m.name));
+
+  const pickerRow = (pickers) => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center', minHeight: '34px' }}>
+      {pickers.length === 0
+        ? <span style={{ fontSize: '0.65rem', opacity: 0.4, margin: 'auto' }}>—</span>
+        : pickers.map(m => (
+            <div key={m.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+              <img src={m.photo} referrerPolicy="no-referrer" alt={m.name}
+                style={{ width: '30px', height: '30px', borderRadius: '50%', border: '2px solid var(--teal)' }} />
+              <span style={{ fontSize: '0.55rem', fontWeight: 800 }}>{m.name.split(' ')[0]}</span>
+            </div>
+          ))
+      }
+    </div>
+  );
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, var(--card), var(--surface))',
+      border: '2.5px solid var(--teal)',
+      borderRadius: '18px',
+      overflow: 'hidden',
+      marginBottom: '1.5rem',
+      boxShadow: '0 4px 24px rgba(20,184,166,0.15)'
+    }}>
+      {/* Header */}
+      <div style={{ background: 'var(--teal)', padding: '0.6rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ color: 'white', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.07em' }}>🔴 LIVE — BETS LOCKED</span>
+        <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.65rem', fontWeight: 700 }}>{match.date} · {match.time}</span>
+      </div>
+
+      {/* Teams & Picks */}
+      <div style={{ padding: '1rem', display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+        {/* Team 1 */}
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontWeight: 900, fontSize: '0.78rem', marginBottom: '0.5rem', lineHeight: '1.2' }}>{match.teams[0]}</div>
+          {pickerRow(team1Pickers)}
+        </div>
+
+        <div style={{ fontSize: '0.7rem', fontWeight: 900, opacity: 0.25, margin: 'auto 0', paddingTop: '1rem' }}>VS</div>
+
+        {/* Team 2 */}
+        <div style={{ flex: 1, textAlign: 'center' }}>
+          <div style={{ fontWeight: 900, fontSize: '0.78rem', marginBottom: '0.5rem', lineHeight: '1.2' }}>{match.teams[1]}</div>
+          {pickerRow(team2Pickers)}
+        </div>
+      </div>
+
+      {/* Missed row */}
+      {missed.length > 0 && (
+        <div style={{ borderTop: '1.5px dashed var(--border)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--error)', whiteSpace: 'nowrap' }}>MISSED −₹10:</span>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {missed.map(m => (
+              <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <img src={m.photo} referrerPolicy="no-referrer" alt={m.name}
+                  style={{ width: '20px', height: '20px', borderRadius: '50%', opacity: 0.5, filter: 'grayscale(1)' }} />
+                <span style={{ fontSize: '0.6rem', fontWeight: 700, opacity: 0.6 }}>{m.name.split(' ')[0]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function BetView({ matches, votes, squadStats, user, handleVote, ongoingMatch }) {
   const [showAll, setShowAll] = useState(false);
 
-  const firstDate       = matches.length > 0 ? matches[0].date : null;
+  const firstDate        = matches.length > 0 ? matches[0].date : null;
   const displayedMatches = (showAll || !firstDate)
     ? matches
     : matches.filter(m => m.date === firstDate);
@@ -61,6 +136,10 @@ export default function BetView({ matches, votes, squadStats, user, handleVote }
 
   return (
     <div className="fade-in">
+      {/* ONGOING MATCH — pinned at the top */}
+      {ongoingMatch && (
+        <OngoingMatchCard match={ongoingMatch} votes={votes} user={user} />
+      )}
       <div style={{ position: 'relative', marginBottom: '1.5rem', borderRadius: '16px', overflow: 'hidden', height: '140px', border: '3px solid var(--border)' }}>
         <img 
           src="/bg_poster.jpeg" 

@@ -1,4 +1,4 @@
-import { isBefore, addDays, parse } from 'date-fns';
+import { isBefore, addDays, subMinutes, addHours, parse } from 'date-fns';
 import { IPL_SCHEDULE, BET_AMOUNT } from './constants';
 
 /**
@@ -25,7 +25,8 @@ export function computeActiveMatches(customMatches, _tick) {
         'MMMM d yyyy h:mm a',
         new Date()
       );
-      return isBefore(now, matchTime) && isBefore(matchTime, twoDaysLater);
+      const lockTime = subMinutes(matchTime, 31);
+      return isBefore(now, lockTime) && isBefore(matchTime, twoDaysLater);
     })
     .map(m => {
       if (!m.teams) {
@@ -34,6 +35,49 @@ export function computeActiveMatches(customMatches, _tick) {
       }
       return m;
     });
+}
+
+/**
+ * Identify the currently ongoing match.
+ * A match shows from the moment bets lock (31 mins prior to start)
+ * until the match is settled in Firestore (or 5 hrs as a fallback).
+ *
+ * @param {Object[]} customMatches
+ * @param {Object[]} matchResults  - settled results from Firestore
+ * @param {number}   _tick
+ */
+export function computeOngoingMatch(customMatches, matchResults, _tick) {
+  const now = new Date();
+
+  const allSources = [
+    ...IPL_SCHEDULE.map(m => ({ ...m, id: `ipl-2025-${m.num}` })),
+    ...customMatches,
+  ];
+
+  const ongoingMatches = allSources.filter(m => {
+    const matchTime = parse(
+      `${m.date} 2026 ${m.time}`,
+      'MMMM d yyyy h:mm a',
+      new Date()
+    );
+    const lockTime = subMinutes(matchTime, 31);
+    const fallbackEnd = addHours(matchTime, 5); // safety fallback
+
+    // Bets must be locked (past lockTime) and match must not be settled yet
+    const isLocked = now >= lockTime;
+    const isSettled = matchResults.some(r => r.match_id === m.id);
+    const withinFallback = now <= fallbackEnd;
+
+    return isLocked && !isSettled && withinFallback;
+  }).map(m => {
+    if (!m.teams) {
+      const [t1, t2] = m.fixture.split(' vs ');
+      return { ...m, teams: [t1, t2] };
+    }
+    return m;
+  });
+
+  return ongoingMatches.length > 0 ? ongoingMatches[0] : null;
 }
 
 /**
