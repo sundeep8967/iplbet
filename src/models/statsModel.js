@@ -80,7 +80,7 @@ export function computeSquadStats(votes, matchResults) {
       });
 
       const pot = allMembers.length * BET_AMOUNT;
-      const individualPayout = Math.floor(pot / winnersCount);
+      const individualPayout = pot / winnersCount;
       mVotes.forEach(v => {
         if (v.chosen_team === winner) {
           stats[v.user_name].wins += 1;
@@ -90,6 +90,13 @@ export function computeSquadStats(votes, matchResults) {
         }
       });
     }
+  });
+
+  // Format all monetary values to 2 decimal places properly
+  Object.values(stats).forEach(s => {
+    s.earnings = Number(s.earnings.toFixed(2));
+    s.won = Number(s.won.toFixed(2));
+    s.spent = Number(s.spent.toFixed(2));
   });
 
   return stats;

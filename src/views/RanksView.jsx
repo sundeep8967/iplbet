@@ -31,7 +31,7 @@ export default function RanksView({ squadStats, onViewHistory }) {
                 <div>
                   <div style={{ fontWeight: 700, marginBottom: '2px' }}>{name}</div>
                   <div style={{ fontSize: '0.65rem', color: 'var(--muted)', fontWeight: 600 }}>
-                    Won: <span style={{ color: 'var(--teal)' }}>₹{stats.won}</span> · Paid: <span style={{ color: 'var(--error)' }}>₹{stats.spent}</span>
+                    Won: <span style={{ color: 'var(--teal)' }}>₹{stats.won.toFixed(2)}</span> · Paid: <span style={{ color: 'var(--error)' }}>₹{stats.spent.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -41,7 +41,7 @@ export default function RanksView({ squadStats, onViewHistory }) {
                     {isPos ? 'Net Profit' : 'Net Loss'}
                   </div>
                   <div style={{ fontWeight: 800, color: isPos ? 'var(--teal)' : 'var(--error)' }}>
-                    {isPos ? '+' : '-'}₹{Math.abs(stats.earnings)}
+                    {isPos ? '+' : '-'}₹{Math.abs(stats.earnings).toFixed(2)}
                   </div>
                 </div>
                 <button

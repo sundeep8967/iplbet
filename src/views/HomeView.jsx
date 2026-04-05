@@ -27,7 +27,7 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
           const isWinner = userVote && userVote.chosen_team === result.winner_team;
 
           if (isWinner) {
-            payout = Math.floor(pot / winnersCount) - BET_AMOUNT;
+            payout = (pot / winnersCount) - BET_AMOUNT;
           } else {
             payout = -BET_AMOUNT;
           }
@@ -90,7 +90,7 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
           <div style={{ fontSize: '1.2rem' }}>💰</div>
           <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Profits</div>
           <div style={{ fontWeight: 800, fontSize: '1.1rem', color: stats.earnings >= 0 ? 'var(--teal)' : 'var(--error)' }}>
-            ₹{stats.earnings}
+            ₹{stats.earnings.toFixed(2)}
           </div>
         </div>
         <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>
@@ -101,12 +101,12 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
         <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>
           <div style={{ fontSize: '1.2rem' }}>📈</div>
           <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Total Won</div>
-          <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--teal)' }}>₹{stats.won || 0}</div>
+          <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--teal)' }}>₹{(stats.won || 0).toFixed(2)}</div>
         </div>
         <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>
           <div style={{ fontSize: '1.2rem' }}>📉</div>
           <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Total Paid</div>
-          <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--error)' }}>₹{stats.spent || 0}</div>
+          <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--error)' }}>₹{(stats.spent || 0).toFixed(2)}</div>
         </div>
       </div>
 
@@ -135,7 +135,7 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
                              {v.payout > 0 ? '🎉 WON' : (v.isMissed ? '💸 AUTO-DEDUCT' : '💔 LOST')}
                           </div>
                           <div style={{ fontSize: '0.85rem', fontWeight: 800, color: v.payout > 0 ? 'var(--teal)' : 'var(--error)' }}>
-                             {v.payout > 0 ? '+' : ''}₹{v.payout}
+                             {v.payout > 0 ? '+' : ''}₹{v.payout.toFixed(2)}
                           </div>
                        </div>
                     )}
