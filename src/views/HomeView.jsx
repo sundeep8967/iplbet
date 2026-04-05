@@ -8,7 +8,11 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
   const myVotes = React.useMemo(() => {
     if (!user) return [];
     
-    const allSettledMatches = allMatches.filter(m => matchResults.some(r => r.match_id === m.id));
+    const allSettledMatches = allMatches.filter(m => {
+      const isSettled = matchResults.some(r => r.match_id === m.id);
+      const isActivelyBetOn = votes.some(v => v.match_id === m.id);
+      return isSettled && isActivelyBetOn;
+    });
     const allKnownUsers = Array.from(new Set(votes.map(vo => vo.user_name)));
 
     // Create a list of entries for this user: either their vote or a 'missed match' entry
