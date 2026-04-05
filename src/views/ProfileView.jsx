@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IPL_SCHEDULE } from '../models/constants';
+import { subscribePreferences, setNotificationPreference } from '../services/firestoreService';
 
 // ── Override picker for a single settled match ────────────────────────────────
 function OverrideRow({ result, onOverride }) {
@@ -93,6 +94,23 @@ export default function ProfileView({
   onViewHistory,
 }) {
   const [autoSettling, setAutoSettling] = useState({});
+  const [emailEnabled, setEmailEnabled] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = subscribePreferences(user.uid, (pref) => {
+      // Default to true if no preference exists
+      setEmailEnabled(pref ? pref.sendEmails : true);
+    });
+    return () => unsub();
+  }, [user]);
+
+  const toggleEmailPreference = async () => {
+    if (!user) return;
+    const newState = !emailEnabled;
+    setEmailEnabled(newState);
+    await setNotificationPreference(user.uid, user.email, newState);
+  };
 
   // Auto-settle a single match by calling the local settle server
   const handleAutoSettle = async (match) => {
@@ -144,9 +162,41 @@ export default function ProfileView({
       <h3 style={{ fontFamily: "'Baloo 2', sans-serif" }}>{user.displayName}</h3>
       <p style={{ opacity: 0.6, fontSize: '0.85rem', marginBottom: '1rem' }}>{user.email}</p>
 
-      <button className="btn-primary" style={{ background: 'var(--teal)', marginBottom: '2rem' }} onClick={onViewHistory}>
+      <button className="btn-primary" style={{ background: 'var(--teal)', marginBottom: '1.5rem' }} onClick={onViewHistory}>
         My Bet History 📜
       </button>
+
+      <div className="glass-card" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'var(--surface)' }}>
+        <div style={{ textAlign: 'left' }}>
+          <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>Email Alerts 🔔</div>
+          <div style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>Reminders 30m before match</div>
+        </div>
+        <button 
+          onClick={toggleEmailPreference}
+          style={{
+            background: emailEnabled ? 'var(--teal)' : 'var(--bg)',
+            border: '2px solid var(--border)',
+            borderRadius: '20px',
+            width: '46px',
+            height: '24px',
+            position: 'relative',
+            cursor: 'pointer',
+            transition: 'background 0.2s'
+          }}
+        >
+          <div style={{
+            position: 'absolute',
+            top: '2px',
+            left: emailEnabled ? '24px' : '2px',
+            width: '16px',
+            height: '16px',
+            background: 'white',
+            borderRadius: '50%',
+            transition: 'left 0.2s',
+            boxShadow: '1px 1px 2px rgba(0,0,0,0.2)'
+          }} />
+        </button>
+      </div>
 
       {isAdmin && (
         <div className="glass-card fade-in" style={{ textAlign: 'left', padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--bg)' }}>

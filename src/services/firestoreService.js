@@ -62,6 +62,20 @@ export function subscribeAdmins(callback) {
 }
 
 /**
+ * Subscribe to the current user's email notification preferences.
+ * @param {string} uid
+ * @param {(pref: Object | null) => void} callback
+ */
+export function subscribePreferences(uid, callback) {
+  if (!uid) return callback(null);
+  const ref = doc(db, 'user_preferences', uid);
+  return onSnapshot(ref, snap => {
+    if (!snap.exists()) callback(null);
+    else callback({ id: snap.id, ...snap.data() });
+  });
+}
+
+/**
  * Subscribe to all users in the system.
  * @param {(users: Object[]) => void} callback
  * @returns {() => void} unsubscribe
@@ -233,5 +247,15 @@ export async function saveUserToDatabase(user) {
     displayName: user.displayName,
     photoURL: user.photoURL,
     last_login: new Date().toISOString()
+  }, { merge: true });
+}
+
+/**
+ * Set the explicit email opt-out/opt-in flag for a given user.
+ */
+export async function setNotificationPreference(uid, userEmail, sendEmails) {
+  await setDoc(doc(db, 'user_preferences', uid), {
+    email: userEmail,
+    sendEmails
   }, { merge: true });
 }
