@@ -65,9 +65,10 @@ async function runTest() {
     }
   });
 
-  const [votes, preferences] = await Promise.all([
+  const [votes, preferences, userDocs] = await Promise.all([
     fetchFromFirestore('votes'),
-    fetchFromFirestore('user_preferences')
+    fetchFromFirestore('user_preferences'),
+    fetchFromFirestore('users')
   ]);
 
   // Identify all valid users by finding who has cast a vote before
@@ -83,13 +84,14 @@ async function runTest() {
     if (!userVote || !userVote.user_id) continue;
     
     const pref = preferences.find(p => p.id === userVote.user_id);
+    const mainUserDoc = userDocs.find(u => u.id === userVote.user_id);
     
     if (pref && pref.sendEmails === false) {
       console.log(`🔇 Skipping ${userName} (Has explicitly disabled emails in UI)`);
       continue;
     }
 
-    const emailAddress = pref ? pref.email : null;
+    const emailAddress = (pref && pref.email) ? pref.email : (mainUserDoc ? mainUserDoc.email : null);
     if (!emailAddress) {
       console.log(`⚠️ Missing email address for ${userName}, skipping.`);
       continue;

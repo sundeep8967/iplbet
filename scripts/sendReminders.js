@@ -80,9 +80,10 @@ async function run() {
   console.log(`⏰ Upcoming Match: ${targetMatch.fixture} at ${targetMatch.time}`);
 
   console.log('Fetching users, votes, and preferences from Firestore...');
-  const [votes, preferences] = await Promise.all([
+  const [votes, preferences, userDocs] = await Promise.all([
     fetchFromFirestore('votes'),
-    fetchFromFirestore('user_preferences')
+    fetchFromFirestore('user_preferences'),
+    fetchFromFirestore('users')
   ]);
 
   // Which users have already voted for THIS match?
@@ -120,13 +121,14 @@ async function run() {
     
     // Find preference
     const pref = preferences.find(p => p.id === userVote.user_id);
+    const mainUserDoc = userDocs.find(u => u.id === userVote.user_id);
     
     if (pref && pref.sendEmails === false) {
       console.log(`🔇 Skipping ${userName} (Opted out)`);
       continue;
     }
 
-    const emailAddress = pref ? pref.email : null;
+    const emailAddress = (pref && pref.email) ? pref.email : (mainUserDoc ? mainUserDoc.email : null);
     if (!emailAddress) {
       console.log(`⚠️ Missing email address for ${userName}, skipping.`);
       continue;
