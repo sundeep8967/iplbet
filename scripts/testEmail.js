@@ -9,6 +9,8 @@ const localPath = new URL('./serviceAccount.json', import.meta.url).pathname;
 
 if (existsSync(localPath)) {
   serviceAccount = JSON.parse(readFileSync(localPath, 'utf8'));
+} else if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 } else {
   console.error('❌ No Firebase credentials found. Exiting.');
   process.exit(1);
