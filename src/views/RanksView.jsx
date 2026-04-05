@@ -13,8 +13,14 @@ export default function RanksView({ squadStats, onViewHistory }) {
           alt="Squad at Match" 
           style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
         />
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.85))', padding: '1rem', color: 'white' }}>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.85))', padding: '1rem', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <h3 style={{ fontFamily: "'Baloo 2', sans-serif", margin: 0, textShadow: '2px 2px 0 var(--dark)' }}>SQUAD RANKS 🏆</h3>
+          {sorted.length > 0 && (
+            <div style={{ textAlign: 'right', textShadow: '1px 1px 0 var(--dark)' }}>
+              <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Inv / Player</div>
+              <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--yellow)' }}>₹{squadStats[sorted[0]].spent.toFixed(2)}</div>
+            </div>
+          )}
         </div>
       </div>
       <div className="glass-card" style={{ padding: '1rem' }}>
