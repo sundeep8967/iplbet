@@ -1,8 +1,8 @@
 import React from 'react';
 import { parse } from 'date-fns';
+import { MISC_RESULTS, BET_AMOUNT } from '../models/constants';
 
 export default function HistoryView({ userName, votes, matchResults, allMatches, onClose }) {
-  const BET_AMOUNT = 10;
 
   const displayHistory = React.useMemo(() => {
     const allSettledMatches = allMatches.filter(m => matchResults.some(r => r.match_id === m.id));
@@ -15,6 +15,17 @@ export default function HistoryView({ userName, votes, matchResults, allMatches,
       let chosen_team = userVote ? userVote.chosen_team : 'NONE (MISSED)';
 
       if (result) {
+        // Skip payout calculation if it's a DRAW or CANCELLED
+        if (Object.values(MISC_RESULTS).includes(result.winner_team)) {
+          return {
+            match_id: m.id,
+            match: m,
+            chosen_team,
+            payout: 0,
+            isMissed: !userVote
+          };
+        }
+
         const mVotes = votes.filter(vo => vo.match_id === m.id);
         const winnersCount = mVotes.filter(vo => vo.chosen_team === result.winner_team).length;
 

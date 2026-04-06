@@ -25,6 +25,9 @@ const TEAM_ALIASES = {
   'Lucknow Super Giants':        ['LSG', 'Lucknow Super Giants'],
 };
 
+// Import MISC_RESULTS for consistent result strings
+const { MISC_RESULTS } = await import('../src/models/constants.js');
+
 /**
  * Given a raw result text from Google (e.g. "DC won by 6 wickets"),
  * map it back to the canonical full team name.
@@ -44,14 +47,26 @@ function resolveWinner(text, team1, team2) {
   const aliases1 = TEAM_ALIASES[team1] ?? [team1];
   const aliases2 = TEAM_ALIASES[team2] ?? [team2];
 
-  // Require 'won by' — filters out toss results, "who won?" questions, etc.
-  const wonByIdx = lower.indexOf('won by');
-  if (wonByIdx === -1) return null;
-
   // Both teams must appear somewhere in the text (confirms it's this fixture)
   const team1Mentioned = aliases1.some(a => lower.includes(a.toLowerCase()));
   const team2Mentioned = aliases2.some(a => lower.includes(a.toLowerCase()));
   if (!team1Mentioned || !team2Mentioned) return null;
+
+  // Check for Draws / Cancellations / Abandonment
+  const miscKeywords = [
+    { keys: ['match drawn', 'match tied', 'drawn'], result: MISC_RESULTS.DRAW },
+    { keys: ['match abandoned', 'no result', 'match cancelled', 'abandoned', 'cancelled'], result: MISC_RESULTS.CANCELLED },
+  ];
+
+  for (const group of miscKeywords) {
+    if (group.keys.some(k => lower.includes(k))) {
+      return group.result;
+    }
+  }
+
+  // Require 'won by' — filters out toss results, "who won?" questions, etc.
+  const wonByIdx = lower.indexOf('won by');
+  if (wonByIdx === -1) return null;
 
   // Winner is the alias that appears CLOSEST before 'won by' (within 60 chars)
   // This handles scorecard blobs like: "CSK 209/5 ... PBKS 210/5 PBKS won by 5 wkts"

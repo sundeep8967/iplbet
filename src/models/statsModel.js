@@ -1,5 +1,5 @@
 import { isBefore, addDays, subMinutes, addHours, parse } from 'date-fns';
-import { IPL_SCHEDULE, BET_AMOUNT, BET_LOCK_MINUTES } from './constants';
+import { IPL_SCHEDULE, BET_AMOUNT, BET_LOCK_MINUTES, MISC_RESULTS } from './constants';
 
 /**
  * Compute the list of active (bettable) matches for the next 2 days.
@@ -107,6 +107,10 @@ export function computeSquadStats(votes, matchResults) {
 
   latestByMatch.forEach(res => {
     const { match_id: matchId, winner_team: winner } = res;
+    
+    // Skip payout logic if the match is a DRAW or CANCELLED
+    if (Object.values(MISC_RESULTS).includes(winner)) return;
+
     const mVotes = votes.filter(v => v.match_id === matchId);
     
     const allMembers = Object.keys(stats);

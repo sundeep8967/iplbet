@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { isBefore, format, parse } from 'date-fns';
-import { IPL_SCHEDULE, IPL_TEAMS, MONTHS, selectStyle } from '../models/constants';
+import { IPL_SCHEDULE, IPL_TEAMS, MONTHS, selectStyle, MISC_RESULTS } from '../models/constants';
 
 /**
  * AddMatchModal — local sub-component, used only within ScheduleView.
@@ -165,6 +165,11 @@ function SettleModal({ match, onClose, onConfirm, onAutoSettle, autoState }) {
              <button className="btn-primary" style={{ padding: '0.6rem' }} onClick={() => onConfirm(match.teams[0])}>🏅 {match.teams[0]}</button>
              <button className="btn-primary" style={{ padding: '0.6rem' }} onClick={() => onConfirm(match.teams[1])}>🏅 {match.teams[1]}</button>
              
+             <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn-primary" style={{ flex: 1, padding: '0.6rem', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }} onClick={() => onConfirm(MISC_RESULTS.DRAW)}>🤝 Draw</button>
+                <button className="btn-primary" style={{ flex: 1, padding: '0.6rem', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)' }} onClick={() => onConfirm(MISC_RESULTS.CANCELLED)}>🌧️ Cancel</button>
+             </div>
+
              <div style={{ margin: '0.5rem 0', textAlign: 'center', fontSize: '0.75rem', color: 'var(--muted)', fontWeight: 800 }}>— OR —</div>
 
              <button
@@ -335,8 +340,18 @@ export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchRes
                 
                 {result && (
                   <div style={{ marginTop: '0.5rem', display: 'flex', gap: '10px', alignItems: 'center' }}>
-                    <div style={{ display: 'inline-block', background: 'var(--yellow)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 800 }}>
-                      🏆 {result.winner_team} WON
+                    <div style={{
+                      display: 'inline-block',
+                      background: result.winner_team === MISC_RESULTS.CANCELLED ? 'var(--error)' : 'var(--yellow)',
+                      color: result.winner_team === MISC_RESULTS.CANCELLED ? 'white' : 'inherit',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      fontSize: '0.65rem',
+                      fontWeight: 800
+                    }}>
+                      {result.winner_team === MISC_RESULTS.DRAW ? '🤝 MATCH DRAWN' :
+                       result.winner_team === MISC_RESULTS.CANCELLED ? '🌧️ MATCH CANCELLED' :
+                       `🏆 ${result.winner_team} WON`}
                     </div>
                     {isAdmin && (
                       <button style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '0.65rem', fontWeight: 800, textDecoration: 'underline', cursor: 'pointer' }} onClick={() => setSettlingMatch(m)}>

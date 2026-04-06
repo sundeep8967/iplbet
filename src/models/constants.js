@@ -46,6 +46,11 @@ export const IPL_SCHEDULE = [
   { num: 40, date: 'April 28',  time: '7:30 PM', fixture: 'Punjab Kings vs Rajasthan Royals' },
 ];
 
+export const MISC_RESULTS = {
+  DRAW:      'DRAW',
+  CANCELLED: 'CANCELLED',
+};
+
 export const IPL_TEAMS = [
   'Chennai Super Kings',
   'Delhi Capitals',
