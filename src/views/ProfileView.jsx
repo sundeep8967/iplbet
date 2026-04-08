@@ -205,28 +205,20 @@ export default function ProfileView({
           <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>{t('language')} 🌍</div>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button 
-            onClick={() => onLanguageChange('te')}
-            style={{
-              flex: 1, padding: '10px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer',
-              border: language === 'te' ? '2px solid var(--teal)' : '1px solid var(--border)',
-              background: language === 'te' ? 'rgba(20,184,166,0.1)' : 'var(--bg)',
-              color: language === 'te' ? 'var(--teal)' : 'var(--text)'
-            }}
-          >
-            {t('telugu')}
-          </button>
-          <button 
-            onClick={() => onLanguageChange('en')}
-            style={{
-              flex: 1, padding: '10px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer',
-              border: language === 'en' ? '2px solid var(--teal)' : '1px solid var(--border)',
-              background: language === 'en' ? 'rgba(20,184,166,0.1)' : 'var(--bg)',
-              color: language === 'en' ? 'var(--teal)' : 'var(--text)'
-            }}
-          >
-            {t('english')}
-          </button>
+          {['en', 'te', 'kn'].map(langKey => (
+            <button 
+              key={langKey}
+              onClick={() => onLanguageChange(langKey)}
+              style={{
+                flex: 1, padding: '10px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer',
+                border: language === langKey ? '2px solid var(--teal)' : '1px solid var(--border)',
+                background: language === langKey ? 'rgba(20,184,166,0.1)' : 'var(--bg)',
+                color: language === langKey ? 'var(--teal)' : 'var(--text)'
+              }}
+            >
+              {langKey === 'te' ? t('telugu') : langKey === 'kn' ? t('kannada') : t('english')}
+            </button>
+          ))}
         </div>
       </div>
 

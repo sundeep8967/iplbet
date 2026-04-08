@@ -45,7 +45,7 @@ export function useAppController() {
   const [customMatches, setCustomMatches]     = useState([]);
   const [adminList, setAdminList]             = useState([]);
   const [allUsers, setAllUsers]               = useState([]);
-  const [language, setLanguage]               = useState(localStorage.getItem('app_lang') || 'te');
+  const [language, setLanguage]               = useState(localStorage.getItem('app_lang') || 'en');
 
   // Minute tick — drives activeMatches recomputation without a timer-in-useMemo
   const [tick, setTick] = useState(0);
