@@ -6,7 +6,7 @@ import { IPL_SCHEDULE, IPL_TEAMS, MONTHS, selectStyle, MISC_RESULTS } from '../m
  * AddMatchModal — local sub-component, used only within ScheduleView.
  * Collects new match data from the admin and calls onAdd.
  */
-function AddMatchModal({ onClose, onAdd }) {
+function AddMatchModal({ onClose, onAdd, t }) {
   const [team1,  setTeam1]  = useState('');
   const [team2,  setTeam2]  = useState('');
   const [day,    setDay]    = useState('');
@@ -41,7 +41,7 @@ function AddMatchModal({ onClose, onAdd }) {
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <h3 style={{ fontFamily: "'Baloo 2', sans-serif", margin: 0 }}>➕ Add Custom Match</h3>
+          <h3 style={{ fontFamily: "'Baloo 2', sans-serif", margin: 0 }}>➕ {t('add_manual_match')}</h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.4rem', cursor: 'pointer', lineHeight: 1 }}>✕</button>
         </div>
 
@@ -153,7 +153,7 @@ function AddMatchModal({ onClose, onAdd }) {
   );
 }
 
-function SettleModal({ match, onClose, onConfirm, onAutoSettle, autoState }) {
+function SettleModal({ match, onClose, onConfirm, onAutoSettle, autoState, t }) {
   const busy = autoState === 'loading';
 
   return (
@@ -188,17 +188,17 @@ function SettleModal({ match, onClose, onConfirm, onAutoSettle, autoState }) {
                  if (ok) onClose();
                }}
              >
-               {busy ? '🔍 Searching Google…' : autoState === 'done' ? '✅ Settled!' : autoState === 'not_found' ? '⚠️ Result Not Found' : autoState === 'error' ? '❌ Error' : '🤖 Rerun Auto Settle'}
-             </button>
+                {busy ? t('loading') : autoState === 'done' ? t('won') : autoState === 'not_found' ? t('missed') : autoState === 'error' ? t('action_failed') : t('sync_schedule')}
+              </button>
 
-             <button className="btn-primary" style={{ background: 'transparent', color: 'var(--muted)', marginTop: '0.5rem', boxShadow: 'none' }} onClick={onClose}>Cancel</button>
-          </div>
+              <button className="btn-primary" style={{ background: 'transparent', color: 'var(--muted)', marginTop: '0.5rem', boxShadow: 'none' }} onClick={onClose}>{t('cancel') || 'Cancel'}</button>
+           </div>
        </div>
     </div>
   )
 }
 
-export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchResults, onSettle, onDeleteMatch }) {
+export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchResults, onSettle, onDeleteMatch, t }) {
   const [showModal, setShowModal]     = useState(false);
   const [settlingMatch, setSettlingMatch] = useState(null);
   const [autoSettling, setAutoSettling]   = useState({}); // matchId → 'loading'|'done'|'not_found'|'error'
@@ -250,7 +250,7 @@ export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchRes
   return (
     <div className="fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h3 style={{ fontFamily: "'Baloo 2', sans-serif", margin: 0 }}>IPL CALENDAR 📅</h3>
+        <h3 style={{ fontFamily: "'Baloo 2', sans-serif", margin: 0 }}>{t('schedule_title')}</h3>
         {isAdmin && (
           <button
             className="btn-primary"
@@ -266,6 +266,7 @@ export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchRes
         <AddMatchModal
           onClose={() => setShowModal(false)}
           onAdd={async (data) => { await onAddMatch(data); setShowModal(false); }}
+          t={t}
         />
       )}
       {settlingMatch && (
@@ -279,6 +280,7 @@ export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchRes
              onSettle(settlingMatch.id, winner, existingResult?.id);
              setSettlingMatch(null);
           }} 
+          t={t}
         />
       )}
 

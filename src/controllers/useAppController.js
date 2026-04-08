@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { isBefore, addHours, addMinutes, parse, subMinutes, format } from 'date-fns';
+import translations from '../i18n';
 
 // Services
 import { onAuthChanged, loginWithGoogle, logoutUser } from '../services/authService';
@@ -44,6 +45,7 @@ export function useAppController() {
   const [customMatches, setCustomMatches]     = useState([]);
   const [adminList, setAdminList]             = useState([]);
   const [allUsers, setAllUsers]               = useState([]);
+  const [language, setLanguage]               = useState(localStorage.getItem('app_lang') || 'te');
 
   // Minute tick — drives activeMatches recomputation without a timer-in-useMemo
   const [tick, setTick] = useState(0);
@@ -204,6 +206,16 @@ export function useAppController() {
   const ENV_ADMINS = (import.meta.env.VITE_ADMIN_EMAILS || 'sundeep8967@gmail.com').split(',');
   const isAdmin = user && (ENV_ADMINS.includes(user.email) || adminList.some(a => a.email === user.email));
 
+  // Translation helper
+  const t = useCallback((key) => {
+    return translations[language][key] || key;
+  }, [language]);
+
+  const handleLanguageChange = (lang) => {
+    setLanguage(lang);
+    localStorage.setItem('app_lang', lang);
+  };
+
   // ─── PUBLIC API ─────────────────────────────────────────────────────────────
   return {
     // auth
@@ -241,5 +253,8 @@ export function useAppController() {
     handleShare,
     handleAddAdmin,
     handleRemoveAdmin,
+    t,
+    language,
+    handleLanguageChange,
   };
 }

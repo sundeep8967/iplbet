@@ -3,7 +3,7 @@ import { Share2 } from 'lucide-react';
 import { parse } from 'date-fns';
 
 // Reuse the same locked-picks card shown in BetView
-function OngoingMatchCardCompact({ match, votes, user }) {
+function OngoingMatchCardCompact({ match, votes, user, t }) {
   // Build squad from votes
   const map = new Map();
   votes.forEach(v => { if (!map.has(v.user_name)) map.set(v.user_name, { name: v.user_name, photo: v.user_photo }); });
@@ -40,7 +40,7 @@ function OngoingMatchCardCompact({ match, votes, user }) {
       boxShadow: '0 4px 24px rgba(20,184,166,0.18)'
     }}>
       <div style={{ background: 'var(--teal)', padding: '0.55rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ color: 'white', fontWeight: 900, fontSize: '0.72rem', letterSpacing: '0.07em' }}>🔴 LIVE — BETS LOCKED</span>
+        <span style={{ color: 'white', fontWeight: 900, fontSize: '0.72rem', letterSpacing: '0.07em' }}>🔴 {t('live_bets_locked')}</span>
         <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.62rem' }}>{match.date} · {match.time}</span>
       </div>
       <div style={{ padding: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
@@ -56,7 +56,7 @@ function OngoingMatchCardCompact({ match, votes, user }) {
       </div>
       {missed.length > 0 && (
         <div style={{ borderTop: '1.5px dashed var(--border)', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--error)', whiteSpace: 'nowrap' }}>AUTO −₹10:</span>
+          <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--error)', whiteSpace: 'nowrap' }}>{t('auto_deduct')} −₹10:</span>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             {missed.map(m => (
               <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -72,7 +72,7 @@ function OngoingMatchCardCompact({ match, votes, user }) {
   );
 }
 
-export default function HomeView({ user, stats, onShare, votes, matchResults, allMatches, ongoingMatches }) {
+export default function HomeView({ user, stats, onShare, votes, matchResults, allMatches, ongoingMatches, t }) {
   const BET_AMOUNT = 10;
   
   const myVotes = React.useMemo(() => {
@@ -138,7 +138,7 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
   return (
     <div className="fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h2 style={{ fontFamily: "'Baloo 2', sans-serif" }}>ChaiBet Global 🏏</h2>
+        <h2 style={{ fontFamily: "'Baloo 2', sans-serif" }}>{t('login_title')}</h2>
         <button
           onClick={onShare}
           style={{ background: 'var(--yellow)', border: '2px solid var(--dark)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '2px 2px 0 var(--dark)' }}
@@ -154,65 +154,65 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
           style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block' }} 
         />
         <div style={{ padding: '1rem' }}>
-          <h4 style={{ fontWeight: 800, margin: 0 }}>LIVE HOT TAKES 🔥</h4>
-          <p style={{ fontSize: '0.85rem', marginTop: '0.3rem', marginBottom: 0 }}>Pick your winners and climb the global leaderboard!</p>
+          <h4 style={{ fontWeight: 800, margin: 0 }}>{t('live_hot_takes')}</h4>
+          <p style={{ fontSize: '0.85rem', marginTop: '0.3rem', marginBottom: 0 }}>{t('login_desc')}</p>
         </div>
       </div>
 
       {/* ONGOING MATCH card — visible between header and stats once bets lock */}
       {/* Ongoing Matches (Locked/Live) */}
       {ongoingMatches.map(m => (
-        <OngoingMatchCardCompact key={m.id} match={m} votes={votes} user={user} />
+        <OngoingMatchCardCompact key={m.id} match={m} votes={votes} user={user} t={t} />
       ))}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1.5rem' }}>
         <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>
           <div style={{ fontSize: '1.2rem' }}>💰</div>
-          <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Profits</div>
+          <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>{t('profits')}</div>
           <div style={{ fontWeight: 800, fontSize: '1.1rem', color: stats.earnings >= 0 ? 'var(--teal)' : 'var(--error)' }}>
             ₹{stats.earnings.toFixed(2)}
           </div>
         </div>
         <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>
           <div style={{ fontSize: '1.2rem' }}>🏆</div>
-          <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Wins</div>
+          <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>{t('wins')}</div>
           <div style={{ fontWeight: 800, fontSize: '1.1rem' }}>{stats.wins}</div>
         </div>
         <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>
           <div style={{ fontSize: '1.2rem' }}>📈</div>
-          <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Total Won</div>
+          <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>{t('total_won')}</div>
           <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--teal)' }}>₹{(stats.won || 0).toFixed(2)}</div>
         </div>
         <div className="glass-card" style={{ padding: '0.8rem', textAlign: 'center', background: 'var(--surface)' }}>
           <div style={{ fontSize: '1.2rem' }}>📉</div>
-          <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Total Paid</div>
+          <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>{t('total_paid')}</div>
           <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--error)' }}>₹{(stats.spent || 0).toFixed(2)}</div>
         </div>
       </div>
 
       <div className="glass-card fade-in" style={{ padding: '1.5rem', background: 'var(--surface)' }}>
          <h4 style={{ fontFamily: "'Baloo 2', sans-serif", borderBottom: '2.5px dashed var(--border)', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
-           MY BETS 📜
+           {t('my_bets')}
          </h4>
          
          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-           {myVotes.length === 0 && <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>No bets placed yet.</p>}
+           {myVotes.length === 0 && <p style={{ fontSize: '0.8rem', opacity: 0.6 }}>{t('no_bets')}</p>}
             {myVotes.map(v => (
               <div key={`${v.match_id}-${v.isMissed}`} className="glass-card" style={{ padding: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: v.isMissed ? 0.7 : 1, borderStyle: v.isMissed ? 'dashed' : 'solid' }}>
                  <div>
                     <div style={{ fontSize: '0.7rem', fontWeight: 800, opacity: 0.6 }}>{v.match?.date} · {v.match?.fixture}</div>
                     <div style={{ fontWeight: 800, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                       {v.chosen_team}
-                      {v.isMissed && <span style={{ fontSize: '0.6rem', background: 'var(--error)', color: 'white', padding: '2px 5px', borderRadius: '4px' }}>MISSED ⚠️</span>}
+                      {v.isMissed && <span style={{ fontSize: '0.6rem', background: 'var(--error)', color: 'white', padding: '2px 5px', borderRadius: '4px' }}>{t('missed')} ⚠️</span>}
                     </div>
                  </div>
                  <div style={{ textAlign: 'right' }}>
                     {v.payout === undefined ? (
-                       <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--muted)' }}>⏳ PENDING</span>
+                       <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--muted)' }}>⏳ {t('pending')}</span>
                     ) : (
                        <div>
                           <div style={{ fontSize: '0.7rem', fontWeight: 800, color: v.payout > 0 ? 'var(--teal)' : 'var(--error)' }}>
-                             {v.payout > 0 ? '🎉 WON' : (v.isMissed ? '💸 AUTO-DEDUCT' : '💔 LOST')}
+                             {v.payout > 0 ? t('won') : (v.isMissed ? t('auto_deduct') : t('lost'))}
                           </div>
                           <div style={{ fontSize: '0.85rem', fontWeight: 800, color: v.payout > 0 ? 'var(--teal)' : 'var(--error)' }}>
                              {v.payout > 0 ? '+' : ''}₹{v.payout.toFixed(2)}

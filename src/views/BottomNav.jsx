@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function BottomNav({ activeTab, setActiveTab }) {
+export default function BottomNav({ activeTab, setActiveTab, t }) {
   return (
     <nav className="bottom-nav">
       <div
@@ -8,32 +8,32 @@ export default function BottomNav({ activeTab, setActiveTab }) {
         onClick={() => setActiveTab('home')}
       >
         <span className="nav-emoji">🏠</span>
-        <span className="nav-label">Home</span>
+        <span className="nav-label">{t('home')}</span>
       </div>
       <div
         className={`nav-tab ${activeTab === 'matches' ? 'active' : ''}`}
         onClick={() => setActiveTab('matches')}
       >
         <span className="nav-emoji">📅</span>
-        <span className="nav-label">Matches</span>
+        <span className="nav-label">{t('matches')}</span>
       </div>
       <div className="nav-center-btn" onClick={() => setActiveTab('bet')}>
         <span className="nav-emoji">🏏</span>
-        <span className="nav-label">BET</span>
+        <span className="nav-label">{t('bet')}</span>
       </div>
       <div
         className={`nav-tab ${activeTab === 'ranks' ? 'active' : ''}`}
         onClick={() => setActiveTab('ranks')}
       >
         <span className="nav-emoji">🏆</span>
-        <span className="nav-label">Ranks</span>
+        <span className="nav-label">{t('ranks')}</span>
       </div>
       <div
         className={`nav-tab ${activeTab === 'profile' ? 'active' : ''}`}
         onClick={() => setActiveTab('profile')}
       >
         <span className="nav-emoji">👤</span>
-        <span className="nav-label">Profile</span>
+        <span className="nav-label">{t('profile')}</span>
       </div>
     </nav>
   );

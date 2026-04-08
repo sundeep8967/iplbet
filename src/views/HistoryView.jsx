@@ -2,7 +2,7 @@ import React from 'react';
 import { parse } from 'date-fns';
 import { MISC_RESULTS, BET_AMOUNT } from '../models/constants';
 
-export default function HistoryView({ userName, votes, matchResults, allMatches, onClose }) {
+export default function HistoryView({ userName, votes, matchResults, allMatches, onClose, t }) {
 
   const displayHistory = React.useMemo(() => {
     const allSettledMatches = allMatches.filter(m => matchResults.some(r => r.match_id === m.id));
@@ -80,23 +80,23 @@ export default function HistoryView({ userName, votes, matchResults, allMatches,
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
         {displayHistory.length === 0 ? (
-          <p style={{ opacity: 0.5, textAlign: 'center' }}>No bets or settled matches yet.</p>
+          <p style={{ opacity: 0.5, textAlign: 'center' }}>{t('no_bets_yet')}</p>
         ) : displayHistory.map(v => (
           <div key={`${v.match_id}-${v.isMissed}`} className="glass-card" style={{ padding: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', opacity: v.isMissed ? 0.7 : 1, borderStyle: v.isMissed ? 'dashed' : 'solid' }}>
              <div>
                 <div style={{ fontSize: '0.7rem', fontWeight: 800, opacity: 0.6 }}>{v.match?.date} · {v.match?.fixture}</div>
                 <div style={{ fontWeight: 800, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '5px' }}>
                   {v.chosen_team}
-                  {v.isMissed && <span style={{ fontSize: '0.6rem', background: 'var(--error)', color: 'white', padding: '2px 5px', borderRadius: '4px' }}>MISSED ⚠️</span>}
+                  {v.isMissed && <span style={{ fontSize: '0.6rem', background: 'var(--error)', color: 'white', padding: '2px 5px', borderRadius: '4px' }}>{t('missed')} ⚠️</span>}
                 </div>
              </div>
              <div style={{ textAlign: 'right' }}>
                 {v.payout === undefined ? (
-                   <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--muted)' }}>⏳ PENDING</span>
+                   <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--muted)' }}>⏳ {t('pending')}</span>
                 ) : (
                    <div>
                       <div style={{ fontSize: '0.7rem', fontWeight: 800, color: v.payout > 0 ? 'var(--teal)' : (v.payout < 0 ? 'var(--error)' : 'var(--muted)') }}>
-                         {v.payout > 0 ? '🎉 WON' : (v.payout < 0 ? (v.isMissed ? '💸 AUTO-DEDUCT' : '💔 LOST') : '🤝 NO Payout')}
+                         {v.payout > 0 ? t('won') : (v.payout < 0 ? (v.isMissed ? t('auto_deduct') : t('lost')) : t('pending'))}
                       </div>
                       <div style={{ fontSize: '0.85rem', fontWeight: 800, color: v.payout > 0 ? 'var(--teal)' : (v.payout < 0 ? 'var(--error)' : 'inherit') }}>
                          {v.payout > 0 ? '+' : ''}₹{v.payout}

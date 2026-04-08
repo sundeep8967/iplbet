@@ -37,7 +37,7 @@ export default function App() {
     squadStats,
     userStats,
 
-    // actions
+    handleRemoveAdmin,
     handleVote,
     handleAddCustomMatch,
     handleUploadSchedule,
@@ -48,10 +48,12 @@ export default function App() {
     adminList,
     allUsers,
     handleAddAdmin,
-    handleRemoveAdmin,
+    t,
+    language,
+    handleLanguageChange,
   } = useAppController();
 
-  if (loading) return <div className="loading">Brewing your tea... 🍵</div>;
+  if (loading) return <div className="loading">{t('loading')}</div>;
 
   return (
     <>
@@ -66,7 +68,7 @@ export default function App() {
 
       <div className="app-container">
         {!user ? (
-          <LoginView login={handleLogin} />
+          <LoginView login={handleLogin} t={t} />
 
         ) : viewingHistoryFor ? (
           <HistoryView
@@ -75,6 +77,7 @@ export default function App() {
             matchResults={matchResults}
             allMatches={allMatches}
             onClose={() => setViewingHistoryFor(null)}
+            t={t}
           />
 
         ) : (
@@ -88,6 +91,7 @@ export default function App() {
                 matchResults={matchResults}
                 allMatches={allMatches}
                 ongoingMatches={ongoingMatches}
+                t={t}
               />
             )}
 
@@ -99,6 +103,7 @@ export default function App() {
                 user={user}
                 handleVote={handleVote}
                 ongoingMatches={ongoingMatches}
+                t={t}
               />
             )}
 
@@ -110,11 +115,12 @@ export default function App() {
                 matchResults={matchResults}
                 onSettle={handleFinalizeWinner}
                 onDeleteMatch={handleDeleteMatch}
+                t={t}
               />
             )}
 
             {activeTab === 'ranks' && (
-              <RanksView squadStats={squadStats} onViewHistory={setViewingHistoryFor} />
+              <RanksView squadStats={squadStats} onViewHistory={setViewingHistoryFor} t={t} />
             )}
 
             {activeTab === 'profile' && (
@@ -134,10 +140,13 @@ export default function App() {
                 onAddAdmin={handleAddAdmin}
                 onRemoveAdmin={handleRemoveAdmin}
                 onViewHistory={() => setViewingHistoryFor(user.displayName)}
+                t={t}
+                language={language}
+                onLanguageChange={handleLanguageChange}
               />
             )}
 
-            <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+            <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} t={t} />
           </>
         )}
       </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function LoginView({ login }) {
+export default function LoginView({ login, t }) {
   return (
     <div className="login-wrap fade-in" style={{ position: 'relative', height: '100vh', width: '100vw', overflow: 'hidden', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
       {/* FULL SCREEN BACKGROUND POSTER */}
@@ -22,7 +22,7 @@ export default function LoginView({ login }) {
           height: '140px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: 'white' 
         }}>
           <div className="logo" style={{ textShadow: '2px 2px 0 var(--dark)' }}>ChaiBet 🍵</div>
-          <div className="banner-sub">The Ultimate Rivalry</div>
+          <div className="banner-sub">{t('rivalry_title')}</div>
         </div>
 
         {/* BODY */}
@@ -30,8 +30,8 @@ export default function LoginView({ login }) {
           <div className="welcome-row">
             <div className="group-avatar">🏏</div>
             <div className="welcome-text">
-              <div className="welcome-title">Chai Squad's IPL 2025 🏆</div>
-              <div className="welcome-sub">Login to place your bets, check the leaderboard &amp; roast your friends</div>
+              <div className="welcome-title">{t('login_title')} 🏆</div>
+              <div className="welcome-sub">{t('login_desc')}</div>
             </div>
           </div>
 
@@ -42,13 +42,13 @@ export default function LoginView({ login }) {
               <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
               <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
-            Continue with Google
+            {t('login_button')}
           </button>
         </div>
 
         {/* CARD FOOTER */}
         <div className="login-footer" style={{ background: 'transparent' }}>
-          <div className="login-footer-text">18+ only · Play responsibly</div>
+          <div className="login-footer-text">{t('play_responsibly')}</div>
         </div>
 
       </div>

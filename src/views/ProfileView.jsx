@@ -95,6 +95,9 @@ export default function ProfileView({
   onAddAdmin,
   onRemoveAdmin,
   onViewHistory,
+  t,
+  language,
+  onLanguageChange,
 }) {
   const [autoSettling, setAutoSettling] = useState({});
   const [emailEnabled, setEmailEnabled] = useState(true);
@@ -194,8 +197,38 @@ export default function ProfileView({
       <p style={{ opacity: 0.6, fontSize: '0.85rem', marginBottom: '1rem' }}>{user.email}</p>
 
       <button className="btn-primary" style={{ background: 'var(--teal)', marginBottom: '1.5rem' }} onClick={onViewHistory}>
-        My Bet History 📜
+        {t('my_bets')} 📜
       </button>
+
+      <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--surface)' }}>
+        <div style={{ textAlign: 'left', marginBottom: '1rem' }}>
+          <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>{t('language')} 🌍</div>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            onClick={() => onLanguageChange('te')}
+            style={{
+              flex: 1, padding: '10px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer',
+              border: language === 'te' ? '2px solid var(--teal)' : '1px solid var(--border)',
+              background: language === 'te' ? 'rgba(20,184,166,0.1)' : 'var(--bg)',
+              color: language === 'te' ? 'var(--teal)' : 'var(--text)'
+            }}
+          >
+            {t('telugu')}
+          </button>
+          <button 
+            onClick={() => onLanguageChange('en')}
+            style={{
+              flex: 1, padding: '10px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer',
+              border: language === 'en' ? '2px solid var(--teal)' : '1px solid var(--border)',
+              background: language === 'en' ? 'rgba(20,184,166,0.1)' : 'var(--bg)',
+              color: language === 'en' ? 'var(--teal)' : 'var(--text)'
+            }}
+          >
+            {t('english')}
+          </button>
+        </div>
+      </div>
 
       <div className="glass-card" style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: 'var(--surface)' }}>
         <div style={{ textAlign: 'left' }}>
@@ -504,7 +537,7 @@ export default function ProfileView({
       )}
 
       <button className="btn-primary" onClick={logout} style={{ background: 'var(--surface)' }}>
-        Log Out 👋
+        {t('logout')} 👋
       </button>
     </div>
   );

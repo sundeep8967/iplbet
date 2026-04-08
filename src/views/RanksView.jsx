@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function RanksView({ squadStats, onViewHistory }) {
+export default function RanksView({ squadStats, onViewHistory, t }) {
   const sorted = Object.keys(squadStats).sort(
     (a, b) => squadStats[b].earnings - squadStats[a].earnings
   );
@@ -14,7 +14,7 @@ export default function RanksView({ squadStats, onViewHistory }) {
           style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
         />
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.85))', padding: '1rem', color: 'white', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-          <h3 style={{ fontFamily: "'Baloo 2', sans-serif", margin: 0, textShadow: '2px 2px 0 var(--dark)' }}>SQUAD RANKS 🏆</h3>
+          <h3 style={{ fontFamily: "'Baloo 2', sans-serif", margin: 0, textShadow: '2px 2px 0 var(--dark)' }}>{t('leaderboard')}</h3>
           {sorted.length > 0 && (
             <div style={{ textAlign: 'right', textShadow: '1px 1px 0 var(--dark)' }}>
               <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>Inv / Player</div>
@@ -44,7 +44,7 @@ export default function RanksView({ squadStats, onViewHistory }) {
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
-                    {isPos ? 'Net Profit' : 'Net Loss'}
+                    {isPos ? t('profits') : t('total_paid')}
                   </div>
                   <div style={{ fontWeight: 800, color: isPos ? 'var(--teal)' : 'var(--error)' }}>
                     {isPos ? '+' : '-'}₹{Math.abs(stats.earnings).toFixed(2)}
@@ -54,7 +54,7 @@ export default function RanksView({ squadStats, onViewHistory }) {
                   style={{ background: 'var(--bg)', color: 'var(--text)', border: '2px solid var(--border)', borderRadius: '8px', padding: '4px 8px', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer' }}
                   onClick={() => onViewHistory(name)}
                 >
-                  History
+                  {t('view_history')}
                 </button>
               </div>
             </div>
