@@ -101,7 +101,7 @@ export function computeSquadStats(votes = [], matchResults = [], users = [], tra
   const joinedAtMap = {};   // displayName → ISO string
   const photoMap    = {};   // displayName → photoURL
 
-  allUsers.forEach(u => {
+  users.forEach(u => {
     if (!u.displayName) return;
     if (u.joined_at)  joinedAtMap[u.displayName] = u.joined_at;
     if (u.photoURL)   photoMap[u.displayName]    = u.photoURL;
