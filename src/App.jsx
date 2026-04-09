@@ -35,6 +35,7 @@ export default function App() {
     activeMatches,
     ongoingMatches,
     squadStats,
+    matchLogs,
     userStats,
 
     handleRemoveAdmin,
@@ -76,6 +77,7 @@ export default function App() {
             votes={votes}
             matchResults={matchResults}
             allMatches={allMatches}
+            matchLogs={matchLogs}
             onClose={() => setViewingHistoryFor(null)}
             t={t}
           />
@@ -91,6 +93,7 @@ export default function App() {
                 matchResults={matchResults}
                 allMatches={allMatches}
                 ongoingMatches={ongoingMatches}
+                matchLogs={matchLogs}
                 t={t}
               />
             )}
@@ -113,6 +116,8 @@ export default function App() {
                 onAddMatch={handleAddCustomMatch}
                 allMatches={allMatches}
                 matchResults={matchResults}
+                votes={votes}
+                squadStats={squadStats}
                 onSettle={handleFinalizeWinner}
                 onDeleteMatch={handleDeleteMatch}
                 t={t}

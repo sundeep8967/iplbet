@@ -72,7 +72,7 @@ function OngoingMatchCardCompact({ match, votes, user, t }) {
   );
 }
 
-export default function HomeView({ user, stats, onShare, votes, matchResults, allMatches, ongoingMatches, t }) {
+export default function HomeView({ user, stats, onShare, votes, matchResults, allMatches, ongoingMatches, matchLogs, t }) {
   const BET_AMOUNT = 10;
   
   const myVotes = React.useMemo(() => {
@@ -90,23 +90,36 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
       const userVote = votes.find(v => v.match_id === m.id && v.user_name === user.displayName);
       const result   = matchResults.find(r => r.match_id === m.id);
       let payout     = 0;
+      let status     = 'pending';
       let chosen_team = userVote ? userVote.chosen_team : 'NONE (MISSED)';
 
       if (result) {
-        const mVotes = votes.filter(vo => vo.match_id === m.id);
-        const winnersCount = mVotes.filter(vo => vo.chosen_team === result.winner_team).length;
-
-        if (winnersCount > 0) {
-          const pot = allKnownUsers.length * BET_AMOUNT;
-          const isWinner = userVote && userVote.chosen_team === result.winner_team;
-
-          if (isWinner) {
-            payout = (pot / winnersCount) - BET_AMOUNT;
-          } else {
-            payout = -BET_AMOUNT;
-          }
+        // Is it DRAW / CANCELLED?
+        if (Object.values({ DRAW: 'DRAW', CANCELLED: 'CANCELLED' }).includes(result.winner_team)) {
+          status = 'cancelled';
+          payout = 0;
         } else {
-          payout = 0; // No one won, so no money is taken from anyone.
+          const log = matchLogs?.[m.id];
+          if (log) {
+            const wasActive = log.activeMembers.includes(user.displayName);
+            
+            if (!wasActive) {
+              status = 'not_joined';
+              payout = 0;
+            } else if (log.winnersCount === 0) {
+              status = 'no_winners';
+              payout = 0;
+            } else {
+              const isWinner = userVote && userVote.chosen_team === log.winner;
+              if (isWinner) {
+                payout = log.individualPayout - BET_AMOUNT;
+                status = 'won';
+              } else {
+                payout = -BET_AMOUNT;
+                status = 'lost';
+              }
+            }
+          }
         }
       }
 
@@ -115,6 +128,7 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
         match: m,
         chosen_team,
         payout,
+        status,
         isMissed: !userVote
       };
     });
@@ -125,7 +139,8 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
       .map(v => ({
         ...v,
         match: allMatches.find(m => m.id === v.match_id),
-        payout: undefined
+        payout: undefined,
+        status: 'pending'
       }));
 
     return [...entries, ...pendingVotes].sort((a,b) => {
@@ -207,15 +222,21 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
                     </div>
                  </div>
                  <div style={{ textAlign: 'right' }}>
-                    {v.payout === undefined ? (
+                    {v.status === 'pending' ? (
                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--muted)' }}>⏳ {t('pending')}</span>
+                    ) : v.status === 'not_joined' ? (
+                       <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--muted)', opacity: 0.6 }}>Not Joined Yet</span>
+                    ) : v.status === 'no_winners' ? (
+                       <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--muted)' }}>No Winners (Refunded)</span>
+                    ) : v.status === 'cancelled' ? (
+                       <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--muted)' }}>Cancelled</span>
                     ) : (
                        <div>
                           <div style={{ fontSize: '0.7rem', fontWeight: 800, color: v.payout > 0 ? 'var(--teal)' : 'var(--error)' }}>
                              {v.payout > 0 ? t('won') : (v.isMissed ? t('auto_deduct') : t('lost'))}
                           </div>
                           <div style={{ fontSize: '0.85rem', fontWeight: 800, color: v.payout > 0 ? 'var(--teal)' : 'var(--error)' }}>
-                             {v.payout > 0 ? '+' : ''}₹{v.payout.toFixed(2)}
+                             {v.payout > 0 ? '+' : ''}₹{Number(v.payout).toFixed(2)}
                           </div>
                        </div>
                     )}

@@ -198,7 +198,7 @@ function SettleModal({ match, onClose, onConfirm, onAutoSettle, autoState, t }) 
   )
 }
 
-export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchResults, onSettle, onDeleteMatch, t }) {
+export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchResults, votes = [], squadStats = {}, onSettle, onDeleteMatch, t }) {
   const [showModal, setShowModal]     = useState(false);
   const [settlingMatch, setSettlingMatch] = useState(null);
   const [autoSettling, setAutoSettling]   = useState({}); // matchId → 'loading'|'done'|'not_found'|'error'
@@ -339,6 +339,58 @@ export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchRes
                   )}
                 </h5>
                 <p>{m.date} · {m.time}</p>
+
+                {(() => {
+                  const matchVotes = votes.filter(v => v.match_id === m.id);
+                  if (matchVotes.length === 0) return null;
+                  
+                  const teams = m.teams || m.fixture.split(' vs ');
+                  const team1Pickers = matchVotes.filter(v => v.chosen_team === teams[0]);
+                  const team2Pickers = matchVotes.filter(v => v.chosen_team === teams[1]);
+
+                  const renderTeamPickers = (pickers, teamName) => {
+                    if (pickers.length === 0) return null;
+                    
+                    let titleColor = 'inherit';
+                    let titleOpacity = 0.6;
+                    
+                    if (result && !Object.values(MISC_RESULTS).includes(result.winner_team)) {
+                      if (result.winner_team === teamName) {
+                        titleColor = 'var(--teal)';
+                        titleOpacity = 1;
+                      } else {
+                        titleColor = 'var(--error)';
+                        titleOpacity = 1;
+                      }
+                    }
+
+                    return (
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: '0.62rem', fontWeight: 900, color: titleColor, opacity: titleOpacity, marginBottom: '6px' }}>
+                          {teamName} {result?.winner_team === teamName ? '✅' : result && !Object.values(MISC_RESULTS).includes(result.winner_team) ? '❌' : ''}
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                          {pickers.map(v => {
+                            const photo = squadStats[v.user_name]?.photo || v.user_photo;
+                            return (
+                              <div key={v.user_name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                                <img src={photo} referrerPolicy="no-referrer" alt={v.user_name} style={{ width: '24px', height: '24px', borderRadius: '50%', border: '1.5px solid var(--border)' }} />
+                                <span style={{ fontSize: '0.5rem', fontWeight: 700, opacity: 0.8 }}>{v.user_name.split(' ')[0]}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  };
+
+                  return (
+                    <div style={{ marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: '1px dashed var(--border)', display: 'flex', gap: '1rem' }}>
+                      {renderTeamPickers(team1Pickers, teams[0])}
+                      {renderTeamPickers(team2Pickers, teams[1])}
+                    </div>
+                  );
+                })()}
                 
                 {result && (
                   <div style={{ marginTop: '0.5rem', display: 'flex', gap: '10px', alignItems: 'center' }}>

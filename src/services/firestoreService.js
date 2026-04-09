@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import {
   collection, addDoc, onSnapshot,
-  query, orderBy, where, updateDoc, doc, deleteDoc, setDoc
+  query, orderBy, where, updateDoc, doc, deleteDoc, setDoc, getDoc
 } from 'firebase/firestore';
 import { IPL_SCHEDULE } from '../models/constants';
 
@@ -254,12 +254,21 @@ export async function removeAdminUser(adminId) {
  */
 export async function saveUserToDatabase(user) {
   if (!user || !user.uid) return;
-  await setDoc(doc(db, 'users', user.uid), {
-    email: user.email,
+  const userRef = doc(db, 'users', user.uid);
+  const snap = await getDoc(userRef);
+  const now = new Date().toISOString();
+  const updateData = {
+    email:       user.email,
     displayName: user.displayName,
-    photoURL: user.photoURL,
-    last_login: new Date().toISOString()
-  }, { merge: true });
+    photoURL:    user.photoURL,
+    last_login:  now,
+  };
+  // Set joined_at only once — on first registration ever.
+  // This is the authoritative "join date" for compulsory charging.
+  if (!snap.exists() || !snap.data().joined_at) {
+    updateData.joined_at = now;
+  }
+  await setDoc(userRef, updateData, { merge: true });
 }
 
 /**
