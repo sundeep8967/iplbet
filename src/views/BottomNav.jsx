@@ -22,6 +22,13 @@ export default function BottomNav({ activeTab, setActiveTab, t }) {
         <span className="nav-label">{t('bet')}</span>
       </div>
       <div
+        className={`nav-tab ${activeTab === 'audit' ? 'active' : ''}`}
+        onClick={() => setActiveTab('audit')}
+      >
+        <span className="nav-emoji">🔍</span>
+        <span className="nav-label">{t('audit_tab')}</span>
+      </div>
+      <div
         className={`nav-tab ${activeTab === 'ranks' ? 'active' : ''}`}
         onClick={() => setActiveTab('ranks')}
       >

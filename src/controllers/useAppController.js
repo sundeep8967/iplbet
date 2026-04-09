@@ -23,11 +23,22 @@ import {
   saveUserToDatabase,
   subscribeTransactions,
   addTransaction,
+  subscribeAdhocBets,
+  subscribeAdhocVotes,
+  subscribeAdhocResults,
+  subscribeAdhocPickEvents,
+  createAdhocBet,
+  updateAdhocBetLock,
+  addAdhocVote,
+  removeAdhocVote,
+  finalizeAdhocWinner,
 } from '../services/firestoreService';
 
 // Models
 import { computeActiveMatches, computeOngoingMatches, computeSquadStats, computeUserStats } from '../models/statsModel';
+import { computeAdhocSquadStats, computeAdhocUserStats } from '../models/adhocStatsModel';
 import { BET_AMOUNT, BET_LOCK_MINUTES, IPL_SCHEDULE } from '../models/constants';
+import { SQUAD_VIEW_BET } from '../models/squadViewMode';
 
 /**
  * useAppController
@@ -41,6 +52,8 @@ export function useAppController() {
   const [loading, setLoading]                 = useState(true);
   const [activeTab, setActiveTab]             = useState('home');
   const [viewingHistoryFor, setViewingHistoryFor] = useState(null);
+  const [viewingAdhocHistoryFor, setViewingAdhocHistoryFor] = useState(null);
+  const [squadViewMode, setSquadViewMode]     = useState(SQUAD_VIEW_BET);
 
   const [votes, setVotes]                     = useState([]);
   const [matchResults, setMatchResults]       = useState([]);
@@ -48,6 +61,10 @@ export function useAppController() {
   const [adminList, setAdminList]             = useState([]);
   const [allUsers, setAllUsers]               = useState([]);
   const [transactions, setTransactions]       = useState([]);
+  const [adhocBets, setAdhocBets]           = useState([]);
+  const [adhocVotes, setAdhocVotes]         = useState([]);
+  const [adhocResults, setAdhocResults]     = useState([]);
+  const [adhocPickEvents, setAdhocPickEvents] = useState([]);
   const [language, setLanguage]               = useState(localStorage.getItem('app_lang') || 'en');
 
   // Minute tick — drives activeMatches recomputation without a timer-in-useMemo
@@ -79,8 +96,23 @@ export function useAppController() {
     const unsubAdmins  = subscribeAdmins(setAdminList);
     const unsubUsers   = subscribeAllUsers(setAllUsers);
     const unsubTx      = subscribeTransactions(setTransactions);
-    
-    return () => { unsubVotes(); unsubResults(); unsubMatches(); unsubAdmins(); unsubUsers(); unsubTx(); };
+    const unsubAdhocB  = subscribeAdhocBets(setAdhocBets);
+    const unsubAdhocV  = subscribeAdhocVotes(setAdhocVotes);
+    const unsubAdhocR  = subscribeAdhocResults(setAdhocResults);
+    const unsubAdhocE  = subscribeAdhocPickEvents(setAdhocPickEvents);
+
+    return () => {
+      unsubVotes();
+      unsubResults();
+      unsubMatches();
+      unsubAdmins();
+      unsubUsers();
+      unsubTx();
+      unsubAdhocB();
+      unsubAdhocV();
+      unsubAdhocR();
+      unsubAdhocE();
+    };
   }, [user]);
 
   // ─── DERIVED STATE (MODELS) ──────────────────────────────────────────────────
@@ -120,6 +152,17 @@ export function useAppController() {
   const userStats = useMemo(
     () => computeUserStats(user, squadStatsObj),
     [user, squadStatsObj]
+  );
+
+  const adhocStatsObj = useMemo(
+    () => computeAdhocSquadStats(adhocVotes, adhocResults, adhocBets, allUsers),
+    [adhocVotes, adhocResults, adhocBets, allUsers]
+  );
+  const adhocSquadStats = adhocStatsObj.statsMap;
+  const adhocLogs = adhocStatsObj.adhocLogs;
+  const adhocUserStats = useMemo(
+    () => computeAdhocUserStats(user, adhocStatsObj),
+    [user, adhocStatsObj]
   );
 
   const totalPot = useMemo(() => votes.length * BET_AMOUNT, [votes]);
@@ -223,6 +266,69 @@ export function useAppController() {
     localStorage.setItem('app_lang', lang);
   };
 
+  const handleCreateAdhocBet = async (data) => {
+    if (!user) return;
+    try {
+      await createAdhocBet(user, data);
+      alert(t('adhoc_created'));
+    } catch (e) {
+      console.error(e);
+      alert(e.message || t('action_failed'));
+    }
+  };
+
+  const handleAdhocVote = async (betId, option) => {
+    if (!user) return;
+    try {
+      const existing = adhocVotes.find(v => v.adhoc_bet_id === betId && v.user_id === user.uid);
+      if (existing && existing.chosen_option === option) {
+        await removeAdhocVote(betId, user);
+        alert(t('adhoc_unpicked'));
+        return;
+      }
+      await addAdhocVote(user, betId, option);
+      alert(t('adhoc_picked'));
+    } catch (e) {
+      console.error(e);
+      alert(e.message || t('action_failed'));
+    }
+  };
+
+  const handleUpdateAdhocLock = async (betId, lockAtIso) => {
+    if (!user) return;
+    try {
+      await updateAdhocBetLock(betId, lockAtIso, user.uid);
+      alert(t('adhoc_lock_updated'));
+    } catch (e) {
+      console.error(e);
+      alert(e.message || t('action_failed'));
+    }
+  };
+
+  const handleFinalizeAdhoc = async (betId, winningOption) => {
+    if (!isAdmin) {
+      alert(t('adhoc_admin_only'));
+      return;
+    }
+    const bet = adhocBets.find(b => b.id === betId);
+    if (bet) {
+      const lockTime = new Date(bet.lock_at);
+      if (isBefore(new Date(), lockTime)) {
+        alert(t('adhoc_settle_locked_msg'));
+        return;
+      }
+    }
+    const existing = adhocResults
+      .filter(r => r.adhoc_bet_id === betId)
+      .sort((a, b) => (b.settled_at || '').localeCompare(a.settled_at || ''))[0];
+    try {
+      await finalizeAdhocWinner(betId, winningOption, existing?.id || null);
+    } catch (e) {
+      console.error(e);
+      alert(e.message || t('action_failed'));
+    }
+  };
+
   // ─── PUBLIC API ─────────────────────────────────────────────────────────────
   return {
     // auth
@@ -237,6 +343,10 @@ export function useAppController() {
     setActiveTab,
     viewingHistoryFor,
     setViewingHistoryFor,
+    viewingAdhocHistoryFor,
+    setViewingAdhocHistoryFor,
+    squadViewMode,
+    setSquadViewMode,
 
     // data
     votes,
@@ -252,6 +362,14 @@ export function useAppController() {
     allUsers,
     transactions,
 
+    adhocBets,
+    adhocVotes,
+    adhocResults,
+    adhocPickEvents,
+    adhocSquadStats,
+    adhocLogs,
+    adhocUserStats,
+
     // actions
     handleVote,
     handleAddCustomMatch,
@@ -263,6 +381,10 @@ export function useAppController() {
     handleAddAdmin,
     handleRemoveAdmin,
     handleAddTransaction: addTransaction,
+    handleCreateAdhocBet,
+    handleAdhocVote,
+    handleUpdateAdhocLock,
+    handleFinalizeAdhoc,
     t,
     language,
     handleLanguageChange,

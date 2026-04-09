@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import {
   collection, addDoc, onSnapshot,
-  query, orderBy, where, updateDoc, doc, deleteDoc, setDoc, getDoc
+  query, orderBy, where, updateDoc, doc, deleteDoc, setDoc, getDoc, getDocs, limit
 } from 'firebase/firestore';
 import { IPL_SCHEDULE } from '../models/constants';
 
@@ -102,6 +102,46 @@ export function subscribeTransactions(callback) {
   const q = query(collection(db, 'transactions'), orderBy('created_at', 'asc'));
   return onSnapshot(q, snap => {
     callback(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  });
+}
+
+/**
+ * @param {(bets: Object[]) => void} callback
+ */
+export function subscribeAdhocBets(callback) {
+  const q = query(collection(db, 'adhoc_bets'), orderBy('created_at', 'desc'));
+  return onSnapshot(q, snap => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+}
+
+/**
+ * @param {(votes: Object[]) => void} callback
+ */
+export function subscribeAdhocVotes(callback) {
+  return onSnapshot(collection(db, 'adhoc_votes'), snap => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+}
+
+/**
+ * @param {(results: Object[]) => void} callback
+ */
+export function subscribeAdhocResults(callback) {
+  const q = query(collection(db, 'adhoc_results'), orderBy('settled_at', 'desc'));
+  return onSnapshot(q, snap => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+  });
+}
+
+/**
+ * Append-only audit trail for adhoc picks (newest first).
+ * @param {(events: Object[]) => void} callback
+ */
+export function subscribeAdhocPickEvents(callback) {
+  const q = query(collection(db, 'adhoc_pick_events'), orderBy('created_at', 'desc'));
+  return onSnapshot(q, snap => {
+    callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
   });
 }
 
@@ -309,4 +349,128 @@ export async function addTransaction(userName, amount, description, createdByAdm
     created_at: new Date().toISOString(),
     created_by: createdByAdmin,
   });
+}
+
+async function appendAdhocPickEvent(betId, user, payload) {
+  await addDoc(collection(db, 'adhoc_pick_events'), {
+    adhoc_bet_id: betId,
+    user_id: user.uid,
+    user_name: user.displayName,
+    created_at: new Date().toISOString(),
+    ...payload,
+  });
+}
+
+/**
+ * @param {import('firebase/auth').User} user
+ * @param {{ statement: string, optionA: string, optionB: string, stakePerHead: number, lockAtIso: string }} data
+ */
+export async function createAdhocBet(user, { statement, optionA, optionB, stakePerHead, lockAtIso }) {
+  const stake = Number(stakePerHead);
+  if (!statement?.trim() || !optionA?.trim() || !optionB?.trim()) {
+    throw new Error('Statement and both options are required.');
+  }
+  if (optionA.trim() === optionB.trim()) {
+    throw new Error('Options must be different.');
+  }
+  if (!Number.isFinite(stake) || stake <= 0) {
+    throw new Error('Stake per head must be a positive number.');
+  }
+  const lock = new Date(lockAtIso);
+  if (Number.isNaN(lock.getTime())) {
+    throw new Error('Invalid lock time.');
+  }
+  await addDoc(collection(db, 'adhoc_bets'), {
+    statement: statement.trim(),
+    option_a: optionA.trim(),
+    option_b: optionB.trim(),
+    stake_per_head: stake,
+    lock_at: lock.toISOString(),
+    created_by_uid: user.uid,
+    created_by_name: user.displayName,
+    created_at: new Date().toISOString(),
+  });
+}
+
+/**
+ * Creator may move lock time until the bet is settled.
+ */
+export async function updateAdhocBetLock(betId, lockAtIso, creatorUid) {
+  const ref = doc(db, 'adhoc_bets', betId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error('Bet not found.');
+  const d = snap.data();
+  if (d.created_by_uid !== creatorUid) {
+    throw new Error('Only the creator can change the lock time.');
+  }
+  const settledSnap = await getDocs(
+    query(collection(db, 'adhoc_results'), where('adhoc_bet_id', '==', betId), limit(1))
+  );
+  if (!settledSnap.empty) {
+    throw new Error('Cannot change lock time after the bet is settled.');
+  }
+  const lock = new Date(lockAtIso);
+  if (Number.isNaN(lock.getTime())) throw new Error('Invalid lock time.');
+  await updateDoc(ref, { lock_at: lock.toISOString() });
+}
+
+/**
+ * @param {import('firebase/auth').User} user
+ * @param {'A'|'B'} option
+ */
+export async function addAdhocVote(user, betId, option) {
+  if (option !== 'A' && option !== 'B') return;
+  const betSnap = await getDoc(doc(db, 'adhoc_bets', betId));
+  if (!betSnap.exists()) throw new Error('Bet not found.');
+  const lockAt = new Date(betSnap.data().lock_at);
+  if (new Date() >= lockAt) {
+    throw new Error('This adhoc bet is locked.');
+  }
+  const docId = `${betId}_${user.uid}`;
+  await setDoc(doc(db, 'adhoc_votes', docId), {
+    adhoc_bet_id: betId,
+    user_id: user.uid,
+    user_name: user.displayName,
+    user_photo: user.photoURL,
+    chosen_option: option,
+    created_at: new Date().toISOString(),
+  });
+  await appendAdhocPickEvent(betId, user, { chosen_option: option, action: 'pick' });
+}
+
+export async function removeAdhocVote(betId, user) {
+  const betSnap = await getDoc(doc(db, 'adhoc_bets', betId));
+  if (!betSnap.exists()) throw new Error('Bet not found.');
+  const lockAt = new Date(betSnap.data().lock_at);
+  if (new Date() >= lockAt) {
+    throw new Error('This adhoc bet is locked.');
+  }
+  const docId = `${betId}_${user.uid}`;
+  await deleteDoc(doc(db, 'adhoc_votes', docId));
+  await appendAdhocPickEvent(betId, user, { action: 'unpick' });
+}
+
+/**
+ * Admin-only on client; must be after lock_at.
+ */
+export async function finalizeAdhocWinner(betId, winningOption, existingResultId = null) {
+  if (winningOption !== 'A' && winningOption !== 'B') return;
+  const betSnap = await getDoc(doc(db, 'adhoc_bets', betId));
+  if (!betSnap.exists()) throw new Error('Bet not found.');
+  const lockAt = new Date(betSnap.data().lock_at);
+  if (new Date() < lockAt) {
+    throw new Error('Cannot settle before lock time.');
+  }
+  if (existingResultId) {
+    await updateDoc(doc(db, 'adhoc_results', existingResultId), {
+      winning_option: winningOption,
+      settled_at: new Date().toISOString(),
+    });
+  } else {
+    await addDoc(collection(db, 'adhoc_results'), {
+      adhoc_bet_id: betId,
+      winning_option: winningOption,
+      settled_at: new Date().toISOString(),
+    });
+  }
 }
