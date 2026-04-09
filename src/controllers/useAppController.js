@@ -106,8 +106,8 @@ export function useAppController() {
   );
 
   const squadStats = useMemo(
-    () => computeSquadStats(votes, matchResults),
-    [votes, matchResults]
+    () => computeSquadStats(votes, matchResults, allUsers),
+    [votes, matchResults, allUsers]
   );
 
   const userStats = useMemo(
