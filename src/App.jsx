@@ -116,6 +116,8 @@ export default function App() {
                 onAddMatch={handleAddCustomMatch}
                 allMatches={allMatches}
                 matchResults={matchResults}
+                votes={votes}
+                squadStats={squadStats}
                 onSettle={handleFinalizeWinner}
                 onDeleteMatch={handleDeleteMatch}
                 t={t}
