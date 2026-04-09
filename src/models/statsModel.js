@@ -90,6 +90,7 @@ export function computeOngoingMatches(customMatches, matchResults, _tick) {
  * @param {Object[]} votes
  * @param {Object[]} matchResults
  * @param {Object[]} allUsers  - registered users from Firestore (may have joined_at)
+ * @returns {{ statsMap: Object, matchLogs: Object }}
  */
 export function computeSquadStats(votes, matchResults, allUsers = []) {
 
@@ -159,6 +160,8 @@ export function computeSquadStats(votes, matchResults, allUsers = []) {
 
   // ── Step 4: Apply compulsory charges and distribute winnings ───────────────
 
+  const matchLogs = {}; // Stores EXACT math for each match to sync with HistoryView
+
   latestByMatch.forEach(res => {
     const { match_id: matchId, winner_team: winner } = res;
 
@@ -177,6 +180,19 @@ export function computeSquadStats(votes, matchResults, allUsers = []) {
     if (activeMembers.length === 0) return;
 
     const winnersCount = mVotes.filter(v => v.chosen_team === winner).length;
+
+    const pot              = activeMembers.length * BET_AMOUNT;
+    const individualPayout = winnersCount > 0 ? (pot / winnersCount) : 0;
+
+    // Log the exact math for this match
+    matchLogs[matchId] = {
+      pot,
+      winnersCount,
+      individualPayout,
+      winner,
+      activeMembers
+    };
+
     if (winnersCount === 0) return;
 
     // Deduct ₹10 from every active member (compulsory).
@@ -185,10 +201,7 @@ export function computeSquadStats(votes, matchResults, allUsers = []) {
       stats[name].spent    += BET_AMOUNT;
     });
 
-    // Distribute the full pot equally among match winners.
-    const pot              = activeMembers.length * BET_AMOUNT;
-    const individualPayout = pot / winnersCount;
-
+    // Distribute the exact individualPayout among match winners
     mVotes.forEach(v => {
       if (v.chosen_team === winner && stats[v.user_name]) {
         stats[v.user_name].wins     += 1;
@@ -206,7 +219,7 @@ export function computeSquadStats(votes, matchResults, allUsers = []) {
     s.spent    = Number(s.spent.toFixed(2));
   });
 
-  return stats;
+  return { statsMap: stats, matchLogs };
 }
 
 
@@ -218,8 +231,9 @@ export function computeSquadStats(votes, matchResults, allUsers = []) {
  * @param {ReturnType<typeof computeSquadStats>} squadStats
  * @returns {{ wins: number, earnings: number }}
  */
-export function computeUserStats(user, squadStats) {
+export function computeUserStats(user, squadStatsObj) {
   const name = user?.displayName;
-  if (!name || !squadStats[name]) return { wins: 0, earnings: 0, spent: 0, won: 0 };
-  return squadStats[name];
+  const statsMap = squadStatsObj?.statsMap || {};
+  if (!name || !statsMap[name]) return { wins: 0, earnings: 0, spent: 0, won: 0 };
+  return statsMap[name];
 }

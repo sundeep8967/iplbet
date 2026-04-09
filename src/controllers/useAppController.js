@@ -105,14 +105,17 @@ export function useAppController() {
     [customMatches, matchResults, tick]
   );
 
-  const squadStats = useMemo(
+  const squadStatsObj = useMemo(
     () => computeSquadStats(votes, matchResults, allUsers),
     [votes, matchResults, allUsers]
   );
+  
+  const squadStats = squadStatsObj.statsMap;
+  const matchLogs = squadStatsObj.matchLogs;
 
   const userStats = useMemo(
-    () => computeUserStats(user, squadStats),
-    [user, squadStats]
+    () => computeUserStats(user, squadStatsObj),
+    [user, squadStatsObj]
   );
 
   const totalPot = useMemo(() => votes.length * BET_AMOUNT, [votes]);
@@ -238,6 +241,7 @@ export function useAppController() {
     activeMatches,
     ongoingMatches,
     squadStats,
+    matchLogs,
     userStats,
     totalPot,
     adminList,
