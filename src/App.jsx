@@ -142,8 +142,10 @@ export default function App() {
                 isAdmin={isAdmin}
                 adminList={adminList}
                 allUsers={allUsers}
+                transactions={transactions}
                 onAddAdmin={handleAddAdmin}
                 onRemoveAdmin={handleRemoveAdmin}
+                onAddTransaction={handleAddTransaction}
                 onViewHistory={() => setViewingHistoryFor(user.displayName)}
                 t={t}
                 language={language}

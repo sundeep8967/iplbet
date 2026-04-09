@@ -92,7 +92,7 @@ export function computeOngoingMatches(customMatches, matchResults, _tick) {
  * @param {Object[]} allUsers  - registered users from Firestore (may have joined_at)
  * @returns {{ statsMap: Object, matchLogs: Object }}
  */
-export function computeSquadStats(votes, matchResults, allUsers = []) {
+export function computeSquadStats(votes = [], matchResults = [], users = [], transactions = []) {
 
   // ── Step 1: Build clean lookup maps ────────────────────────────────────────
 
@@ -211,7 +211,22 @@ export function computeSquadStats(votes, matchResults, allUsers = []) {
     });
   });
 
-  // ── Step 5: Round all monetary values ─────────────────────────────────────
+  // ── Step 5: Append manual transactions (deposits/bonuses/withdrawals) ───────
+  
+  transactions.forEach(tx => {
+    const userStats = stats[tx.user_name];
+    if (userStats) {
+      if (tx.amount > 0) {
+        userStats.earnings += tx.amount;
+        userStats.won += tx.amount; // Treating positive adjustments as 'won' / added value
+      } else {
+        userStats.earnings += tx.amount;
+        userStats.spent += Math.abs(tx.amount); // Treating negative as spent/withdrawn
+      }
+    }
+  });
+
+  // ── Step 6: Round all monetary values ─────────────────────────────────────
 
   Object.values(stats).forEach(s => {
     s.earnings = Number(s.earnings.toFixed(2));

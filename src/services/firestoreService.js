@@ -93,6 +93,18 @@ export function subscribeAllUsers(callback) {
   });
 }
 
+/**
+ * Subscribe to the manual transactions ledger collection.
+ * @param {(txs: Object[]) => void} callback
+ * @returns {() => void} unsubscribe
+ */
+export function subscribeTransactions(callback) {
+  const q = query(collection(db, 'transactions'), orderBy('created_at', 'asc'));
+  return onSnapshot(q, snap => {
+    callback(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  });
+}
+
 // ─── MUTATIONS ───────────────────────────────────────────────────────────────
 
 /**
@@ -279,4 +291,22 @@ export async function setNotificationPreference(uid, userEmail, sendEmails) {
     email: userEmail,
     sendEmails
   }, { merge: true });
+}
+
+/**
+ * Add a manual transaction to the ledger (Deposit, Bonus, Withdrawal).
+ * @param {string} userName
+ * @param {number} amount
+ * @param {string} description
+ * @param {string} createdByAdmin
+ */
+export async function addTransaction(userName, amount, description, createdByAdmin) {
+  await addDoc(collection(db, 'transactions'), {
+    user_name: userName,
+    amount,
+    description,
+    type: amount > 0 ? 'deposit' : 'withdrawal',
+    created_at: new Date().toISOString(),
+    created_by: createdByAdmin,
+  });
 }

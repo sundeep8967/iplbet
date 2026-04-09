@@ -21,6 +21,8 @@ import {
   subscribeAdmins,
   subscribeAllUsers,
   saveUserToDatabase,
+  subscribeTransactions,
+  addTransaction,
 } from '../services/firestoreService';
 
 // Models
@@ -45,6 +47,7 @@ export function useAppController() {
   const [customMatches, setCustomMatches]     = useState([]);
   const [adminList, setAdminList]             = useState([]);
   const [allUsers, setAllUsers]               = useState([]);
+  const [transactions, setTransactions]       = useState([]);
   const [language, setLanguage]               = useState(localStorage.getItem('app_lang') || 'en');
 
   // Minute tick — drives activeMatches recomputation without a timer-in-useMemo
@@ -75,8 +78,9 @@ export function useAppController() {
     const unsubMatches = subscribeCustomMatches(setCustomMatches);
     const unsubAdmins  = subscribeAdmins(setAdminList);
     const unsubUsers   = subscribeAllUsers(setAllUsers);
+    const unsubTx      = subscribeTransactions(setTransactions);
     
-    return () => { unsubVotes(); unsubResults(); unsubMatches(); unsubAdmins(); unsubUsers(); };
+    return () => { unsubVotes(); unsubResults(); unsubMatches(); unsubAdmins(); unsubUsers(); unsubTx(); };
   }, [user]);
 
   // ─── DERIVED STATE (MODELS) ──────────────────────────────────────────────────
@@ -106,8 +110,8 @@ export function useAppController() {
   );
 
   const squadStatsObj = useMemo(
-    () => computeSquadStats(votes, matchResults, allUsers),
-    [votes, matchResults, allUsers]
+    () => computeSquadStats(votes, matchResults, allUsers, transactions),
+    [votes, matchResults, allUsers, transactions]
   );
   
   const squadStats = squadStatsObj.statsMap;
@@ -246,6 +250,7 @@ export function useAppController() {
     totalPot,
     adminList,
     allUsers,
+    transactions,
 
     // actions
     handleVote,
@@ -257,6 +262,7 @@ export function useAppController() {
     handleShare,
     handleAddAdmin,
     handleRemoveAdmin,
+    handleAddTransaction: addTransaction,
     t,
     language,
     handleLanguageChange,
