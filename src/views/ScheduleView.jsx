@@ -350,9 +350,25 @@ export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchRes
 
                   const renderTeamPickers = (pickers, teamName) => {
                     if (pickers.length === 0) return null;
+                    
+                    let titleColor = 'inherit';
+                    let titleOpacity = 0.6;
+                    
+                    if (result && !Object.values(MISC_RESULTS).includes(result.winner_team)) {
+                      if (result.winner_team === teamName) {
+                        titleColor = 'var(--teal)';
+                        titleOpacity = 1;
+                      } else {
+                        titleColor = 'var(--error)';
+                        titleOpacity = 1;
+                      }
+                    }
+
                     return (
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.6rem', fontWeight: 800, opacity: 0.6, marginBottom: '4px' }}>{teamName}</div>
+                        <div style={{ fontSize: '0.62rem', fontWeight: 900, color: titleColor, opacity: titleOpacity, marginBottom: '6px' }}>
+                          {teamName} {result?.winner_team === teamName ? '✅' : result && !Object.values(MISC_RESULTS).includes(result.winner_team) ? '❌' : ''}
+                        </div>
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                           {pickers.map(v => {
                             const photo = squadStats[v.user_name]?.photo || v.user_photo;
