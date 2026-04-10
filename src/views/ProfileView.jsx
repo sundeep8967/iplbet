@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { parse, isBefore, isAfter, addHours, format, addDays, subDays, subMinutes } from 'date-fns';
+import { isBefore, isAfter, addHours, format, addDays, subDays, subMinutes } from 'date-fns';
 import { IPL_SCHEDULE, TEAM_ACRONYMS } from '../models/constants';
 import { subscribePreferences, setNotificationPreference } from '../services/firestoreService';
+import { parseMatchDateTimeUTC } from '../utils/utcDate';
 
 // ── Override picker for a single settled match ────────────────────────────────
 function OverrideRow({ result, onOverride }) {
@@ -109,11 +110,11 @@ export default function ProfileView({
   const auditMatchesCandidates = React.useMemo(() => {
      const now = new Date();
      return allMatches.filter(m => {
-        const mTime = parse(`${m.date} 2026 ${m.time}`, 'MMMM d yyyy h:mm a', new Date());
+        const mTime = parseMatchDateTimeUTC(m.date, m.time);
         return isAfter(mTime, subDays(now, 1)) && isBefore(mTime, addDays(now, 2));
      }).sort((a,b) => {
-        const tA = parse(`${a.date} 2026 ${a.time}`, 'MMMM d yyyy h:mm a', new Date());
-        const tB = parse(`${b.date} 2026 ${b.time}`, 'MMMM d yyyy h:mm a', new Date());
+        const tA = parseMatchDateTimeUTC(a.date, a.time);
+        const tB = parseMatchDateTimeUTC(b.date, b.time);
         return tB - tA; // Newest first
      });
   }, [allMatches]);
@@ -122,7 +123,7 @@ export default function ProfileView({
     if (!selectedAuditMatchId && auditMatchesCandidates.length > 0) {
       // Prioritize ongoing match if it's in the audit list
       const ongoing = auditMatchesCandidates.find(m => {
-        const mTime = parse(`${m.date} 2026 ${m.time}`, 'MMMM d yyyy h:mm a', new Date());
+        const mTime = parseMatchDateTimeUTC(m.date, m.time);
         const now = new Date();
         return isBefore(subMinutes(mTime, 31), now) && isBefore(now, addHours(mTime, 5));
       });
@@ -267,7 +268,7 @@ export default function ProfileView({
           )}
             {auditMatchesCandidates.map(m => {
                 const isSelected = selectedAuditMatchId === m.id;
-                const mTime = parse(`${m.date} 2026 ${m.time}`, 'MMMM d yyyy h:mm a', new Date());
+                const mTime = parseMatchDateTimeUTC(m.date, m.time);
 
                 const isUpcoming = isBefore(new Date(), subMinutes(mTime, 31));
                 const isOngoing  = isBefore(subMinutes(mTime, 31), new Date()) && isBefore(new Date(), addHours(mTime, 5));

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { isBefore, format, parse } from 'date-fns';
+import { isBefore, format } from 'date-fns';
 import { IPL_SCHEDULE, IPL_TEAMS, MONTHS, selectStyle, MISC_RESULTS } from '../models/constants';
+import { parseMatchDateTimeUTC } from '../utils/utcDate';
 
 /**
  * AddMatchModal — local sub-component, used only within ScheduleView.
@@ -286,12 +287,12 @@ export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchRes
 
       <div className="schedule-list">
         {allMatches.map((m, index) => {
-          const matchDate  = parse(`${m.date} 2026 ${m.time}`, 'MMMM d yyyy h:mm a', new Date());
+          const matchDate  = parseMatchDateTimeUTC(m.date, m.time);
           const isPast     = isBefore(matchDate, now);
           const isToday    = m.date === todayStr;
           const isNextFirst = !isPast && (
             index === 0 ||
-            isBefore(parse(`${allMatches[index - 1].date} 2026 ${allMatches[index - 1].time}`, 'MMMM d yyyy h:mm a', new Date()), now)
+            isBefore(parseMatchDateTimeUTC(allMatches[index - 1].date, allMatches[index - 1].time), now)
           );
           
           const result = matchResults.find(r => r.match_id === m.id);
