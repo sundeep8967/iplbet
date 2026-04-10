@@ -1,6 +1,120 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Share2 } from 'lucide-react';
+import { isBefore, format } from 'date-fns';
 import { parseMatchDateTimeUTC } from '../utils/utcDate';
+import { SQUAD_VIEW_BET, SQUAD_VIEW_ADHOC_BET } from '../models/squadViewMode';
+
+function OngoingAdhocCardCompact({ bet, adhocVotes, user, onNavigate, t }) {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const lockAt = new Date(bet.lock_at);
+  const locked = !isBefore(now, lockAt);
+  const betVotes = adhocVotes.filter(v => v.adhoc_bet_id === bet.id);
+  const participants = new Set(betVotes.map(v => v.user_name)).size;
+
+  let countdown = '';
+  if (!locked) {
+    const diff = lockAt.getTime() - now.getTime();
+    if (diff > 0) {
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      countdown = h > 0 ? `${h}h ${m}m ${s}s` : `${m}m ${s}s`;
+    }
+  }
+
+  const buildAdhocSquadMembers = (votes, me) => {
+    const map = new Map();
+    votes.forEach(v => { if (!map.has(v.user_name)) map.set(v.user_name, { name: v.user_name, photo: v.user_photo }); });
+    if (me && !map.has(me.displayName)) map.set(me.displayName, { name: me.displayName, photo: me.photoURL });
+    return Array.from(map.values());
+  };
+
+  const squadMembers = buildAdhocSquadMembers(betVotes, user);
+  const optAPickers = squadMembers.filter(m => betVotes.find(v => v.user_name === m.name && v.chosen_option === 'A'));
+  const optBPickers = squadMembers.filter(m => betVotes.find(v => v.user_name === m.name && v.chosen_option === 'B'));
+
+  const pickerRow = (pickers) => (
+    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center', minHeight: '36px' }}>
+      {pickers.length === 0
+        ? <span style={{ fontSize: '0.65rem', opacity: 0.35, margin: 'auto' }}>—</span>
+        : pickers.map(m => (
+            <div key={m.name} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+              <img src={m.photo} referrerPolicy="no-referrer" alt={m.name}
+                style={{ width: '32px', height: '32px', borderRadius: '50%', border: '2.5px solid var(--teal)' }} />
+              <span style={{ fontSize: '0.55rem', fontWeight: 800 }}>{m.name.split(' ')[0]}</span>
+            </div>
+          ))
+      }
+    </div>
+  );
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, var(--card), var(--surface))',
+      border: '2.5px solid var(--teal)',
+      borderRadius: '18px',
+      overflow: 'hidden',
+      marginBottom: '1.5rem',
+      boxShadow: '0 4px 24px rgba(20,184,166,0.18)'
+    }}>
+      <div style={{ background: 'var(--teal)', padding: '0.55rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ color: 'white', fontWeight: 900, fontSize: '0.72rem', letterSpacing: '0.07em' }}>
+          {locked ? `🔴 ${t('adhoc_locked')}` : `🟢 ${t('adhoc_open')}`}
+        </span>
+        <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.62rem', fontWeight: 800 }}>
+          {locked ? format(lockAt, 'MMM d, h:mm a') : `Locks in: ${countdown}`}
+        </span>
+      </div>
+      <div style={{ padding: '1rem', textAlign: 'center' }}>
+        <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
+          ₹{bet.stake_per_head} {t('adhoc_per_head')} · {participants} {t('adhoc_participants')}
+        </div>
+        <div style={{ fontWeight: 900, fontSize: '0.92rem', marginBottom: '1rem' }}>{bet.statement}</div>
+        
+        {!locked && (
+          <button
+            onClick={onNavigate}
+            style={{ 
+              width: '100%', 
+              marginBottom: '1rem', 
+              padding: '0.8rem',
+              background: 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%)', 
+              color: 'white', 
+              fontSize: '0.85rem', 
+              fontWeight: 900,
+              borderRadius: '12px',
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(59, 130, 246, 0.4)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}
+          >
+            PLACE YOUR PICK 🎯
+          </button>
+        )}
+
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 800, fontSize: '0.75rem', marginBottom: '0.5rem', opacity: 0.7 }}>A: {bet.option_a}</div>
+            {pickerRow(optAPickers)}
+          </div>
+          <div style={{ fontSize: '0.7rem', fontWeight: 900, opacity: 0.15, margin: 'auto 0', paddingTop: '1rem' }}>VS</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 800, fontSize: '0.75rem', marginBottom: '0.5rem', opacity: 0.7 }}>B: {bet.option_b}</div>
+            {pickerRow(optBPickers)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Reuse the same locked-picks card shown in BetView
 function OngoingMatchCardCompact({ match, votes, user, t }) {
@@ -72,7 +186,11 @@ function OngoingMatchCardCompact({ match, votes, user, t }) {
   );
 }
 
-export default function HomeView({ user, stats, onShare, votes, matchResults, allMatches, ongoingMatches, matchLogs, t }) {
+export default function HomeView({ 
+  user, stats, onShare, votes, matchResults, allMatches, 
+  ongoingMatches, activeAdhocBets, adhocVotes, matchLogs, 
+  setActiveTab, setSquadViewMode, t 
+}) {
   const BET_AMOUNT = 10;
   
   const myVotes = React.useMemo(() => {
@@ -83,7 +201,6 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
       const isActivelyBetOn = votes.some(v => v.match_id === m.id);
       return isSettled && isActivelyBetOn;
     });
-    const allKnownUsers = Array.from(new Set(votes.map(vo => vo.user_name)));
 
     // Create a list of entries for this user: either their vote or a 'missed match' entry
     const entries = allSettledMatches.map(m => {
@@ -174,10 +291,24 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
         </div>
       </div>
 
-      {/* ONGOING MATCH card — visible between header and stats once bets lock */}
       {/* Ongoing Matches (Locked/Live) */}
       {ongoingMatches.map(m => (
         <OngoingMatchCardCompact key={m.id} match={m} votes={votes} user={user} t={t} />
+      ))}
+
+      {/* Active Adhoc Bets (Open or Locked+Live) */}
+      {activeAdhocBets.map(bet => (
+        <OngoingAdhocCardCompact 
+          key={bet.id} 
+          bet={bet} 
+          adhocVotes={adhocVotes} 
+          user={user} 
+          onNavigate={() => {
+            setSquadViewMode(SQUAD_VIEW_ADHOC_BET);
+            setActiveTab('bet');
+          }}
+          t={t} 
+        />
       ))}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '1.5rem' }}>

@@ -9,7 +9,6 @@ import HomeView     from './views/HomeView';
 import BetTabView   from './views/BetTabView';
 import ScheduleView from './views/ScheduleView';
 import RanksTabView from './views/RanksTabView';
-import AuditTabView from './views/AuditTabView';
 import ProfileView  from './views/ProfileView';
 import HistoryView  from './views/HistoryView';
 import AdhocHistoryView from './views/AdhocHistoryView';
@@ -58,12 +57,14 @@ export default function App() {
     adhocVotes,
     adhocResults,
     adhocPickEvents,
+    activeAdhocBets,
     adhocSquadStats,
     adhocLogs,
     handleCreateAdhocBet,
     handleAdhocVote,
     handleUpdateAdhocLock,
     handleFinalizeAdhoc,
+    handleDeleteAdhocBet,
     t,
     language,
     handleLanguageChange,
@@ -116,7 +117,11 @@ export default function App() {
                 matchResults={matchResults}
                 allMatches={allMatches}
                 ongoingMatches={ongoingMatches}
+                activeAdhocBets={activeAdhocBets}
+                adhocVotes={adhocVotes}
                 matchLogs={matchLogs}
+                setActiveTab={setActiveTab}
+                setSquadViewMode={setSquadViewMode}
                 t={t}
               />
             )}
@@ -147,6 +152,7 @@ export default function App() {
                   handleAdhocVote,
                   handleUpdateAdhocLock,
                   handleFinalizeAdhoc,
+                  handleDeleteAdhocBet,
                   t,
                 }}
               />
@@ -184,26 +190,6 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'audit' && (
-              <AuditTabView
-                squadViewMode={squadViewMode}
-                setSquadViewMode={setSquadViewMode}
-                t={t}
-                iplAuditProps={{
-                  allMatches,
-                  votes,
-                  matchResults,
-                  allUsers,
-                  t,
-                }}
-                adhocAuditProps={{
-                  adhocBets,
-                  adhocVotes,
-                  allUsers,
-                  t,
-                }}
-              />
-            )}
 
             {activeTab === 'profile' && (
               <ProfileView
@@ -217,10 +203,8 @@ export default function App() {
                 isAdmin={isAdmin}
                 adminList={adminList}
                 allUsers={allUsers}
-                transactions={transactions}
                 onAddAdmin={handleAddAdmin}
                 onRemoveAdmin={handleRemoveAdmin}
-                onAddTransaction={handleAddTransaction}
                 onViewHistory={() => setViewingHistoryFor(user.displayName)}
                 t={t}
                 language={language}
@@ -228,6 +212,21 @@ export default function App() {
                 adhocBets={adhocBets}
                 adhocResults={adhocResults}
                 handleFinalizeAdhoc={handleFinalizeAdhoc}
+                squadViewMode={squadViewMode}
+                setSquadViewMode={setSquadViewMode}
+                iplAuditProps={{
+                  allMatches,
+                  votes,
+                  matchResults,
+                  allUsers,
+                  t,
+                }}
+                adhocAuditProps={{
+                  adhocBets,
+                  adhocVotes,
+                  allUsers,
+                  t,
+                }}
               />
             )}
 

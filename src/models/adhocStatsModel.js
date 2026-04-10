@@ -128,3 +128,14 @@ export function computeAdhocUserStats(user, obj) {
   if (!name || !statsMap[name]) return { wins: 0, earnings: 0, spent: 0, won: 0 };
   return statsMap[name];
 }
+
+/**
+ * Filter adhoc bets that are NOT settled yet.
+ * Used for displaying active action on the Home screen.
+ */
+export function computeActiveAdhocBets(adhocBets, adhocResults) {
+  return adhocBets.filter(bet => {
+    const isSettled = adhocResults.some(r => r.adhoc_bet_id === bet.id);
+    return !isSettled;
+  });
+}

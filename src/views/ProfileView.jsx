@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { IPL_SCHEDULE, TEAM_ACRONYMS } from '../models/constants';
 import { subscribePreferences, setNotificationPreference } from '../services/firestoreService';
+import { SQUAD_VIEW_BET } from '../models/squadViewMode';
+import SquadModeToggle from './SquadModeToggle';
+import IplAuditView from './IplAuditView';
+import AdhocAuditView from './AdhocAuditView';
 
 // ── Override picker for a single settled match ────────────────────────────────
 function OverrideRow({ result, onOverride }) {
@@ -81,9 +85,10 @@ function OverrideRow({ result, onOverride }) {
 export default function ProfileView({ 
   user, logout, onSync, onSettle, onOverrideResult, 
   activeMatches, matchResults, isAdmin, 
-  adminList, allUsers, transactions, onAddAdmin, onRemoveAdmin, onAddTransaction,
+  adminList, allUsers, onAddAdmin, onRemoveAdmin,
   onViewHistory, t, language, onLanguageChange,
-  adhocBets, adhocResults, handleFinalizeAdhoc
+  adhocBets, adhocResults, handleFinalizeAdhoc,
+  squadViewMode, setSquadViewMode, iplAuditProps, adhocAuditProps
 }) {
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [manualSettleId, setManualSettleId] = useState(null);
@@ -91,10 +96,6 @@ export default function ProfileView({
   const [autoSettling, setAutoSettling] = useState({});
   const [settleFilter, setSettleFilter] = useState('IPL');
 
-  // Ledger state
-  const [ledgerUser, setLedgerUser] = useState('');
-  const [ledgerAmount, setLedgerAmount] = useState('');
-  const [ledgerDesc, setLedgerDesc] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -367,68 +368,6 @@ export default function ProfileView({
             )}
           </div>
 
-          {/* ── Ledger Management (Deposits & Withdrawals) ── */}
-          <div style={{ marginBottom: '1.5rem', borderTop: '1px dashed var(--border)', paddingTop: '1.5rem' }}>
-            <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.75rem', textTransform: 'uppercase' }}>🏦 WALLET LEDGER:</p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '1rem', background: 'var(--surface)', padding: '1rem', borderRadius: '12px' }}>
-              <select
-                value={ledgerUser}
-                onChange={e => setLedgerUser(e.target.value)}
-                style={{ padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.75rem' }}
-              >
-                <option value="" disabled>Select User...</option>
-                {allUsers.map(u => (
-                  <option key={u.id} value={u.displayName}>{u.displayName}</option>
-                ))}
-              </select>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input 
-                  type="number" 
-                  placeholder="Amount (e.g. 500 or -50)" 
-                  value={ledgerAmount} 
-                  onChange={e => setLedgerAmount(e.target.value)} 
-                  style={{ flex: 1, padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.75rem' }} 
-                />
-                <input 
-                  type="text" 
-                  placeholder="Reason..." 
-                  value={ledgerDesc} 
-                  onChange={e => setLedgerDesc(e.target.value)} 
-                  style={{ flex: 2, padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: '0.75rem' }} 
-                />
-              </div>
-              <button
-                className="btn-primary"
-                style={{ background: 'var(--orange)', fontSize: '0.75rem', marginTop: '0.5rem' }}
-                onClick={() => {
-                  if (ledgerUser && ledgerAmount && ledgerDesc) {
-                    onAddTransaction(ledgerUser, parseFloat(ledgerAmount), ledgerDesc, user.email);
-                    setLedgerUser('');
-                    setLedgerAmount('');
-                    setLedgerDesc('');
-                  }
-                }}
-              >
-                Add Transaction ➕
-              </button>
-            </div>
-            {/* Show last 5 transactions */}
-            {transactions && transactions.length > 0 && (
-              <div style={{ maxHeight: '150px', overflowY: 'auto' }}>
-                {[...transactions].reverse().slice(0, 5).map(tx => (
-                  <div key={tx.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)', border: '1px solid var(--border)', padding: '0.5rem', borderRadius: '8px', marginBottom: '0.5rem' }}>
-                    <div>
-                      <div style={{ fontSize: '0.65rem', fontWeight: 800 }}>{tx.user_name}</div>
-                      <div style={{ fontSize: '0.55rem', opacity: 0.6 }}>{tx.description}</div>
-                    </div>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 900, color: tx.amount > 0 ? 'var(--teal)' : 'var(--error)' }}>
-                      {tx.amount > 0 ? '+' : ''}₹{tx.amount}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           {/* ── Admin Management ── */}
           <div style={{ marginBottom: '1.5rem', borderTop: '1px dashed var(--border)', paddingTop: '1.5rem' }}>
@@ -469,6 +408,17 @@ export default function ProfileView({
                 </button>
               </div>
             ))}
+          </div>
+          
+          {/* ── Audit Hub ── */}
+          <div style={{ marginBottom: '1.5rem', borderTop: '1px dashed var(--border)', paddingTop: '1.5rem' }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.75rem', textTransform: 'uppercase', color: 'var(--mute)' }}>🕵️ SQUAD AUDIT HUB:</p>
+            <SquadModeToggle mode={squadViewMode} setMode={setSquadViewMode} t={t} />
+            {squadViewMode === SQUAD_VIEW_BET ? (
+              <IplAuditView {...iplAuditProps} />
+            ) : (
+              <AdhocAuditView {...adhocAuditProps} />
+            )}
           </div>
 
         </div>

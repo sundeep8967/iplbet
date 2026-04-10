@@ -37,6 +37,7 @@ export default function AdhocBetPanel({
   handleAdhocVote,
   handleUpdateAdhocLock,
   handleFinalizeAdhoc,
+  handleDeleteAdhocBet,
   t,
 }) {
   const [nowTick, setNowTick] = useState(0);
@@ -45,7 +46,7 @@ export default function AdhocBetPanel({
   const [statement, setStatement] = useState('');
   const [optionA, setOptionA] = useState('');
   const [optionB, setOptionB] = useState('');
-  const [stake, setStake] = useState('50');
+  const [stake, setStake] = useState('2');
   const [lockMinutes, setLockMinutes] = useState('10');
   const [lockSeconds, setLockSeconds] = useState('0');
   const [editLockBetId, setEditLockBetId] = useState(null);
@@ -71,7 +72,7 @@ export default function AdhocBetPanel({
     setStatement('');
     setOptionA('');
     setOptionB('');
-    setStake('50');
+    setStake('2');
     setLockMinutes('10');
     setLockSeconds('0');
     setShowCreate(false);
@@ -243,7 +244,27 @@ export default function AdhocBetPanel({
             </div>
             <div style={{ fontWeight: 900, fontSize: '0.95rem', marginTop: '6px' }}>{bet.statement}</div>
             {isCreator && (
-              <div style={{ fontSize: '0.65rem', marginTop: '4px', color: 'var(--teal)', fontWeight: 700 }}>{t('adhoc_you_created')}</div>
+              <div style={{ fontSize: '0.65rem', marginTop: '4px', color: 'var(--teal)', fontWeight: 700, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>{t('adhoc_you_created')}</span>
+              </div>
+            )}
+            {isAdmin && (
+              <button
+                onClick={() => handleDeleteAdhocBet(bet.id)}
+                style={{
+                  position: 'absolute',
+                  top: '10px',
+                  right: '10px',
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '1rem',
+                  cursor: 'pointer',
+                  opacity: 0.6,
+                }}
+                title={t('delete_match')}
+              >
+                🗑️
+              </button>
             )}
             <div style={{ fontSize: '0.72rem', marginTop: '8px', opacity: 0.85 }}>
               {locked ? (

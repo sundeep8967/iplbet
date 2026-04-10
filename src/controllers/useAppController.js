@@ -32,11 +32,12 @@ import {
   addAdhocVote,
   removeAdhocVote,
   finalizeAdhocWinner,
+  deleteAdhocBet,
 } from '../services/firestoreService';
 
 // Models
 import { computeActiveMatches, computeOngoingMatches, computeSquadStats, computeUserStats } from '../models/statsModel';
-import { computeAdhocSquadStats, computeAdhocUserStats } from '../models/adhocStatsModel';
+import { computeAdhocSquadStats, computeAdhocUserStats, computeActiveAdhocBets } from '../models/adhocStatsModel';
 import { BET_AMOUNT, BET_LOCK_MINUTES, IPL_SCHEDULE } from '../models/constants';
 import { SQUAD_VIEW_BET } from '../models/squadViewMode';
 import { parseMatchDateTimeUTC } from '../utils/utcDate';
@@ -164,6 +165,10 @@ export function useAppController() {
   const adhocUserStats = useMemo(
     () => computeAdhocUserStats(user, adhocStatsObj),
     [user, adhocStatsObj]
+  );
+  const activeAdhocBets = useMemo(
+    () => computeActiveAdhocBets(adhocBets, adhocResults),
+    [adhocBets, adhocResults]
   );
 
   const totalPot = useMemo(() => votes.length * BET_AMOUNT, [votes]);
@@ -326,6 +331,10 @@ export function useAppController() {
     }
   };
 
+  const handleDeleteAdhocBet = async (betId) => {
+    await deleteAdhocBet(betId);
+  };
+
   // ─── PUBLIC API ─────────────────────────────────────────────────────────────
   return {
     // auth
@@ -363,6 +372,7 @@ export function useAppController() {
     adhocVotes,
     adhocResults,
     adhocPickEvents,
+    activeAdhocBets,
     adhocSquadStats,
     adhocLogs,
     adhocUserStats,
@@ -382,6 +392,7 @@ export function useAppController() {
     handleAdhocVote,
     handleUpdateAdhocLock,
     handleFinalizeAdhoc,
+    handleDeleteAdhocBet,
     t,
     language,
     handleLanguageChange,

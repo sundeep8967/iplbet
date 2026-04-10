@@ -1,7 +1,7 @@
 import React from 'react';
 import { SQUAD_VIEW_BET } from '../models/squadViewMode';
-import SquadViewModeDropdown from './SquadViewModeDropdown';
-import RanksView from './RanksView';
+import SquadModeToggle from './SquadModeToggle';
+import IplRanksView from './IplRanksView';
 import AdhocRanksPanel from './AdhocRanksPanel';
 
 export default function RanksTabView({
@@ -13,12 +13,8 @@ export default function RanksTabView({
 }) {
   return (
     <div className="fade-in">
-      <SquadViewModeDropdown squadViewMode={squadViewMode} setSquadViewMode={setSquadViewMode} t={t} />
-      {squadViewMode === SQUAD_VIEW_BET ? (
-        <RanksView {...iplRanksProps} />
-      ) : (
-        <AdhocRanksPanel {...adhocRanksProps} />
-      )}
+      <SquadModeToggle mode={squadViewMode} setMode={setSquadViewMode} t={t} />
+      {squadViewMode === SQUAD_VIEW_BET ? <IplRanksView {...iplRanksProps} /> : <AdhocRanksPanel {...adhocRanksProps} />}
     </div>
   );
 }

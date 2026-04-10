@@ -11,8 +11,9 @@ import { parseMatchDateTimeUTC } from '../utils/utcDate.js';
  * @returns {Object[]} enriched match objects with `teams` array
  */
 export function computeActiveMatches(customMatches, _tick) {
-  const now = new Date();
-  const twoDaysLater = addDays(now, 2);
+  const now            = new Date();
+  const startOfToday  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfDayAfterTomorrow = addDays(startOfToday, 2);
 
   const allSources = [
     ...IPL_SCHEDULE.map(m => ({ ...m, id: `ipl-2025-${m.num}` })),
@@ -23,7 +24,7 @@ export function computeActiveMatches(customMatches, _tick) {
     .filter(m => {
       const matchTime = parseMatchDateTimeUTC(m.date, m.time);
       const lockTime = subMinutes(matchTime, BET_LOCK_MINUTES);
-      return isBefore(now, lockTime) && isBefore(matchTime, twoDaysLater);
+      return isBefore(now, lockTime) && isBefore(matchTime, startOfDayAfterTomorrow);
     })
     .map(m => {
       if (!m.teams) {

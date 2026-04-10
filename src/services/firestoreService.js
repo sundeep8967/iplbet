@@ -474,3 +474,14 @@ export async function finalizeAdhocWinner(betId, winningOption, existingResultId
     });
   }
 }
+/**
+ * Delete an adhoc bet and its associated results/votes.
+ */
+export async function deleteAdhocBet(betId) {
+  if (confirm('Delete this adhoc bet permanently?')) {
+    await deleteDoc(doc(db, 'adhoc_bets', betId));
+    // Implementation note: In a production app, you might want to 
+    // also delete all adhoc_votes and adhoc_results associated with this ID.
+    // For now, removing the bet document itself will make it disappear from the UI.
+  }
+}

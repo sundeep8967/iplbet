@@ -17,6 +17,8 @@ const translations = {
     matches: "మ్యాచ్‌లు",
     ranks: "ర్యాంక్లు",
     profile: "ప్రొఫైల్",
+    squad_view_bet: "రెగ్యులర్ మ్యాచెస్",
+    squad_view_adhoc_bet: "అడ్హాక్ బెట్స్",
     
     // Home View
     live_hot_takes: "లైవ్ హాట్ టేక్స్ 🔥",
@@ -148,6 +150,8 @@ const translations = {
     matches: "Matches",
     ranks: "Ranks",
     profile: "Profile",
+    squad_view_bet: "Regular Matches",
+    squad_view_adhoc_bet: "ADHOC bets",
     live_hot_takes: "LIVE HOT TAKES 🔥",
     my_bets: "MY BETS 📜",
     no_bets: "No bets placed yet.",
@@ -256,6 +260,8 @@ const translations = {
     matches: "ಪಂದ್ಯಗಳು",
     ranks: "ಶ್ರೇಯಾಂಕಗಳು",
     profile: "ಪ್ರೊಫೈಲ್",
+    squad_view_bet: "ರೆಗ್ಯುಲರ್ ಪಂದ್ಯಗಳು",
+    squad_view_adhoc_bet: "ಅಡ್ಹಾಕ್ ಬೆಟ್ಸ್",
     live_hot_takes: "ಲೈವ್ ಹಾಟ್ ಟೇಕ್ಸ್ 🔥",
     my_bets: "ನನ್ನ ಬೆಟ್ಸ್ 📜",
     no_bets: "ಇನ್ನು ಯಾವುದೇ ಬೆಟ್ಸ್ ಹಾಕಿಲ್ಲ.",

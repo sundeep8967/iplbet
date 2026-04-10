@@ -145,21 +145,6 @@ export default function BetView({ matches, votes, squadStats, user, handleVote, 
       {ongoingMatches.map(m => (
         <OngoingMatchCard key={m.id} match={m} votes={votes} user={user} t={t} />
       ))}
-      <div style={{ position: 'relative', marginBottom: '1.5rem', borderRadius: '16px', overflow: 'hidden', height: '140px', border: '3px solid var(--border)' }}>
-        <img 
-          src="/bg_poster.jpeg" 
-          alt="The Ultimate Rivalry" 
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-        />
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(transparent, rgba(0,0,0,0.8))', padding: '0.8rem', color: 'white' }}>
-           <h4 style={{ fontFamily: "'Baloo 2', sans-serif", margin: 0, textShadow: '2px 2px 0 var(--dark)' }}>NEXT DAYS PICKS 🏏</h4>
-        </div>
-      </div>
-
-      <div style={{ background: 'var(--orange)', color: 'white', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', fontSize: '0.8rem', fontWeight: 800, border: '3px solid var(--dark)' }}>
-        ⚠️ RULE: Everyday, ₹10 is deducted automatically, even if you don't choose! If you win, you get your share of the total pot (₹10 from every member).
-      </div>
-
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         {displayedMatches.length === 0 ? (
           <p style={{ textAlign: 'center', opacity: 0.5 }}>{t('no_active_matches')}</p>
@@ -284,7 +269,7 @@ export default function BetView({ matches, votes, squadStats, user, handleVote, 
           className="btn-primary"
           style={{ marginTop: '1.5rem', background: 'var(--card)', color: 'var(--text)' }}
         >
-          View More Upcoming Matches ({otherMatchesCount})
+          View Tomorrow's Matches ({otherMatchesCount})
         </button>
       )}
     </div>
