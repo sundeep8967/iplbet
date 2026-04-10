@@ -142,6 +142,7 @@ export default function App() {
                   adhocVotes,
                   adhocResults,
                   adhocLogs,
+                  allUsers,
                   handleCreateAdhocBet,
                   handleAdhocVote,
                   handleUpdateAdhocLock,
@@ -224,6 +225,9 @@ export default function App() {
                 t={t}
                 language={language}
                 onLanguageChange={handleLanguageChange}
+                adhocBets={adhocBets}
+                adhocResults={adhocResults}
+                handleFinalizeAdhoc={handleFinalizeAdhoc}
               />
             )}
 
