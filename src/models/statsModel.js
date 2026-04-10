@@ -136,7 +136,7 @@ export function computeSquadStats(votes = [], matchResults = [], allUsers = [], 
   const stats = {};
 
   // All registered users (even those who haven't voted yet).
-  users.forEach(u => {
+  allUsers.forEach(u => {
     if (!u.displayName) return;
     stats[u.displayName] = { wins: 0, earnings: 0, spent: 0, won: 0, photo: photoMap[u.displayName] || null };
   });
