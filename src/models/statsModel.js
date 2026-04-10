@@ -92,7 +92,7 @@ export function computeOngoingMatches(customMatches, matchResults, _tick) {
  * @param {Object[]} allUsers  - registered users from Firestore (may have joined_at)
  * @returns {{ statsMap: Object, matchLogs: Object }}
  */
-export function computeSquadStats(votes = [], matchResults = [], users = [], transactions = []) {
+export function computeSquadStats(votes = [], matchResults = [], allUsers = [], transactions = []) {
 
   // ── Step 1: Build clean lookup maps ────────────────────────────────────────
 
@@ -101,7 +101,7 @@ export function computeSquadStats(votes = [], matchResults = [], users = [], tra
   const joinedAtMap = {};   // displayName → ISO string
   const photoMap    = {};   // displayName → photoURL
 
-  users.forEach(u => {
+  allUsers.forEach(u => {
     if (!u.displayName) return;
     if (u.joined_at)  joinedAtMap[u.displayName] = u.joined_at;
     if (u.photoURL)   photoMap[u.displayName]    = u.photoURL;
