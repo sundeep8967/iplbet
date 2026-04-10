@@ -1,5 +1,6 @@
-import { isBefore, addDays, subMinutes, addHours, parse } from 'date-fns';
+import { isBefore, addDays, subMinutes, addHours } from 'date-fns';
 import { IPL_SCHEDULE, BET_AMOUNT, BET_LOCK_MINUTES, MISC_RESULTS } from './constants.js';
+import { parseMatchDateTimeUTC } from '../utils/utcDate.js';
 
 /**
  * Compute the list of active (bettable) matches for the next 2 days.
@@ -20,11 +21,7 @@ export function computeActiveMatches(customMatches, _tick) {
 
   return allSources
     .filter(m => {
-      const matchTime = parse(
-        `${m.date} 2026 ${m.time}`,
-        'MMMM d yyyy h:mm a',
-        new Date()
-      );
+      const matchTime = parseMatchDateTimeUTC(m.date, m.time);
       const lockTime = subMinutes(matchTime, BET_LOCK_MINUTES);
       return isBefore(now, lockTime) && isBefore(matchTime, twoDaysLater);
     })
@@ -55,11 +52,7 @@ export function computeOngoingMatches(customMatches, matchResults, _tick) {
   ];
 
   return allSources.filter(m => {
-    const matchTime = parse(
-      `${m.date} 2026 ${m.time}`,
-      'MMMM d yyyy h:mm a',
-      new Date()
-    );
+    const matchTime = parseMatchDateTimeUTC(m.date, m.time);
     const lockTime = subMinutes(matchTime, BET_LOCK_MINUTES);
     const fallbackEnd = addHours(matchTime, 5); // safety fallback
 
