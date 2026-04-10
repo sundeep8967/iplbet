@@ -57,13 +57,13 @@ function OngoingAdhocCardCompact({ bet, adhocVotes, user, onNavigate, t }) {
   return (
     <div style={{
       background: 'linear-gradient(135deg, var(--card), var(--surface))',
-      border: '2.5px solid var(--teal)',
+      border: '2.5px solid #6366f1',
       borderRadius: '18px',
       overflow: 'hidden',
       marginBottom: '1.5rem',
-      boxShadow: '0 4px 24px rgba(20,184,166,0.18)'
+      boxShadow: '0 4px 24px rgba(99,102,241,0.18)'
     }}>
-      <div style={{ background: 'var(--teal)', padding: '0.55rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ background: '#6366f1', padding: '0.55rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ color: 'white', fontWeight: 900, fontSize: '0.72rem', letterSpacing: '0.07em' }}>
           {locked ? `🔴 ${t('adhoc_locked')}` : `🟢 ${t('adhoc_open')}`}
         </span>
@@ -72,8 +72,24 @@ function OngoingAdhocCardCompact({ bet, adhocVotes, user, onNavigate, t }) {
         </span>
       </div>
       <div style={{ padding: '1rem', textAlign: 'center' }}>
-        <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '4px' }}>
-          ₹{bet.stake_per_head} {t('adhoc_per_head')} · {participants} {t('adhoc_participants')}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+          <div style={{ 
+            fontSize: '0.65rem', 
+            fontWeight: 900, 
+            background: 'rgba(99, 102, 241, 0.15)', 
+            color: '#a5b4fc', 
+            padding: '3px 10px', 
+            borderRadius: '50px',
+            border: '1.5px solid #6366f1'
+          }}>
+            ₹{bet.stake_per_head} {t('adhoc_per_head')}
+          </div>
+          <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>
+            {t('adhoc_created_by')}: <span style={{ color: 'var(--text)' }}>{bet.created_by_name?.split(' ')[0] || 'Admin'}</span>
+          </div>
+        </div>
+        <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', marginBottom: '8px', opacity: 0.6 }}>
+          {participants} {t('adhoc_participants')}
         </div>
         <div style={{ fontWeight: 900, fontSize: '0.92rem', marginBottom: '1rem' }}>{bet.statement}</div>
         

@@ -239,8 +239,24 @@ export default function AdhocBetPanel({
 
         return (
           <div key={bet.id} className="glass-card" style={{ padding: '1rem', marginBottom: '0.85rem', border: '1px solid var(--border)' }}>
-            <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>
-              ₹{bet.stake_per_head} {t('adhoc_per_head')} · {participants} {t('adhoc_participants')}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <div style={{ 
+                fontSize: '0.65rem', 
+                fontWeight: 900, 
+                background: 'rgba(52, 211, 153, 0.15)', 
+                color: 'var(--teal)', 
+                padding: '3px 10px', 
+                borderRadius: '50px',
+                border: '1.5px solid var(--teal)'
+              }}>
+                ₹{bet.stake_per_head} {t('adhoc_per_head')}
+              </div>
+              <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase' }}>
+                {t('adhoc_created_by')}: <span style={{ color: 'var(--text)' }}>{bet.created_by_name || 'Admin'}</span>
+              </div>
+            </div>
+            <div style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--muted)', textTransform: 'uppercase', opacity: 0.6 }}>
+              {participants} {t('adhoc_participants')}
             </div>
             <div style={{ fontWeight: 900, fontSize: '0.95rem', marginTop: '6px' }}>{bet.statement}</div>
             {isCreator && (
