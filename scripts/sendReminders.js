@@ -1,8 +1,9 @@
 import { createRequire } from 'module';
 import { readFileSync, existsSync } from 'fs';
-import { parse, differenceInMinutes } from 'date-fns';
+import { differenceInMinutes } from 'date-fns';
 import { GoogleAuth } from 'google-auth-library';
 import nodemailer from 'nodemailer';
+import { parseMatchDateTimeUTC } from '../src/utils/utcDate.js';
 
 // Import schedule to check upcoming matches
 const { IPL_SCHEDULE } = await import('../src/models/constants.js');
@@ -63,7 +64,7 @@ async function run() {
   const upcomingMatches = IPL_SCHEDULE.map(m => ({
     ...m,
     id: `ipl-2025-${m.num}`,
-    matchTime: parse(`${m.date} 2026 ${m.time}`, 'MMMM d yyyy h:mm a', new Date())
+    matchTime: parseMatchDateTimeUTC(m.date, m.time)
   })).filter(m => {
     const minsUntilMatch = differenceInMinutes(m.matchTime, now);
     // The cron runs at exact 30-min intervals. Give a 15 min buffer to catch the match.
