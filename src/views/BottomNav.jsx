@@ -17,7 +17,10 @@ export default function BottomNav({ activeTab, setActiveTab, t }) {
         <span className="nav-emoji">📅</span>
         <span className="nav-label">{t('matches')}</span>
       </div>
-      <div className="nav-center-btn" onClick={() => setActiveTab('bet')}>
+      <div
+        className={`nav-tab nav-center-btn ${activeTab === 'bet' ? 'active' : ''}`}
+        onClick={() => setActiveTab('bet')}
+      >
         <span className="nav-emoji">🏏</span>
         <span className="nav-label">{t('bet')}</span>
       </div>
