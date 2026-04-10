@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function RanksView({ squadStats, onViewHistory, t }) {
+export default function IplRanksView({ squadStats, onViewHistory, t }) {
   const sorted = Object.keys(squadStats).sort(
     (a, b) => squadStats[b].earnings - squadStats[a].earnings
   );

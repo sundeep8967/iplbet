@@ -1,0 +1,164 @@
+rules_version = '2';
+
+/**
+ * ChaiBet / iplbet — Firestore security rules
+ *
+ * DEPLOY (requires Firebase CLI):
+ *   npm i -g firebase-tools
+ *   firebase login
+ *   firebase use --add   # select your Firebase project
+ *   firebase deploy --only firestore:rules
+ *   firebase deploy --only firestore:indexes   # only if indexes change
+ *
+ * ADMIN ACCESS:
+ *   Update adminEmails() below to match every address in VITE_ADMIN_EMAILS (comma-separated in .env).
+ *   New admins added in the app still need their email listed here, OR change the app to use
+ *   Firebase Auth custom claims / a uid-based collection checked with get().
+ *
+ * CONSOLE (no CLI): Firebase console → Firestore → Rules → paste this file → Publish.
+ */
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** Keep in sync with VITE_ADMIN_EMAILS in your frontend .env */
+    function adminEmails() {
+      return [
+        'sundeep8967@gmail.com',
+      ];
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.email != null
+        && request.auth.token.email in adminEmails();
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    /** IPL vote doc id must be {matchId}_{uid} and belong to the signed-in user */
+    function iplVoteUid() {
+      return request.resource.data.user_id != null
+        ? request.resource.data.user_id
+        : request.resource.data.uid;
+    }
+
+    function validIplVoteWrite(voteId) {
+      let m = request.resource.data.match_id;
+      let u = iplVoteUid();
+      return voteId == m + '_' + u
+        && u == request.auth.uid
+        && m is string
+        && request.resource.data.chosen_team is string
+        && request.resource.data.created_at is string;
+    }
+
+    function validIplVoteDelete(voteId) {
+      return voteId.matches('.*_' + request.auth.uid + '$');
+    }
+
+    /** Adhoc vote doc id must be {adhocBetId}_{uid} */
+    function validAdhocVoteWrite(voteId) {
+      let bid = request.resource.data.adhoc_bet_id;
+      return voteId == bid + '_' + request.auth.uid
+        && request.resource.data.user_id == request.auth.uid
+        && bid is string
+        && request.resource.data.chosen_option is string
+        && request.resource.data.created_at is string;
+    }
+
+    match /votes/{voteId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && validIplVoteWrite(voteId);
+      allow update: if isSignedIn() && validIplVoteWrite(voteId);
+      allow delete: if isSignedIn() && validIplVoteDelete(voteId);
+    }
+
+    match /match_results/{resultId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /matches/{matchId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow create, delete: if isAdmin();
+      allow update: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isOwner(userId);
+      allow delete: if false;
+    }
+
+    match /user_preferences/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    match /transactions/{txId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if false;
+    }
+
+    match /adhoc_bets/{betId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.created_by_uid == request.auth.uid
+        && request.resource.data.keys().hasAll([
+          'statement', 'option_a', 'option_b', 'stake_per_head', 'lock_at',
+          'created_by_uid', 'created_by_name', 'created_at'
+        ]);
+      allow update: if isSignedIn()
+        && resource.data.created_by_uid == request.auth.uid
+        && request.resource.data.created_by_uid == resource.data.created_by_uid
+        && request.resource.data.created_by_name == resource.data.created_by_name
+        && request.resource.data.statement == resource.data.statement
+        && request.resource.data.option_a == resource.data.option_a
+        && request.resource.data.option_b == resource.data.option_b
+        && request.resource.data.stake_per_head == resource.data.stake_per_head
+        && request.resource.data.created_at == resource.data.created_at
+        && request.resource.data.lock_at is string;
+      allow delete: if false;
+    }
+
+    match /adhoc_votes/{voteId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && validAdhocVoteWrite(voteId);
+      allow update: if isSignedIn() && validAdhocVoteWrite(voteId);
+      allow delete: if isSignedIn() && voteId.matches('.*_' + request.auth.uid + '$');
+    }
+
+    match /adhoc_results/{resultId} {
+      allow read: if isSignedIn();
+      allow create, update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /adhoc_pick_events/{eventId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.user_id == request.auth.uid
+        && request.resource.data.adhoc_bet_id is string
+        && request.resource.data.user_name is string
+        && request.resource.data.created_at is string;
+      allow update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

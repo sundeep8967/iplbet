@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { isBefore, isAfter, addHours, format, addDays, subDays, subMinutes } from 'date-fns';
+import React, { useState, useEffect } from 'react';
 import { IPL_SCHEDULE, TEAM_ACRONYMS } from '../models/constants';
 import { subscribePreferences, setNotificationPreference } from '../services/firestoreService';
-import { parseMatchDateTimeUTC } from '../utils/utcDate';
+import { SQUAD_VIEW_BET } from '../models/squadViewMode';
+import SquadModeToggle from './SquadModeToggle';
+import IplAuditView from './IplAuditView';
+import AdhocAuditView from './AdhocAuditView';
 
 // ── Override picker for a single settled match ────────────────────────────────
 function OverrideRow({ result, onOverride }) {
@@ -80,56 +82,20 @@ function OverrideRow({ result, onOverride }) {
 }
 
 // ── Main ProfileView ─────────────────────────────────────────────────────────
-export default function ProfileView({
-  user,
-  logout,
-  onSync,
-  onSettle,
-  onOverrideResult,
-  activeMatches,
-  matchResults,
-  votes = [],
-  allMatches = [],
-  isAdmin,
-  adminList = [],
-  allUsers = [],
-  onAddAdmin,
-  onRemoveAdmin,
-  onViewHistory,
-  t,
-  language,
-  onLanguageChange,
+export default function ProfileView({ 
+  user, logout, onSync, onSettle, onOverrideResult, 
+  activeMatches, matchResults, isAdmin, 
+  adminList, allUsers, onAddAdmin, onRemoveAdmin,
+  onViewHistory, t, language, onLanguageChange,
+  adhocBets, adhocResults, handleFinalizeAdhoc,
+  squadViewMode, setSquadViewMode, iplAuditProps, adhocAuditProps
 }) {
-  const [autoSettling, setAutoSettling] = useState({});
   const [emailEnabled, setEmailEnabled] = useState(true);
-  const [selectedAuditMatchId, setSelectedAuditMatchId] = useState(null);
   const [manualSettleId, setManualSettleId] = useState(null);
   const [manualWinner, setManualWinner] = useState('');
+  const [autoSettling, setAutoSettling] = useState({});
+  const [settleFilter, setSettleFilter] = useState('IPL');
 
-  // Compute all matches in a 3-day window (yesterday, today, tomorrow) for auditing
-  const auditMatchesCandidates = React.useMemo(() => {
-     const now = new Date();
-     return allMatches.filter(m => {
-        const mTime = parseMatchDateTimeUTC(m.date, m.time);
-        return isAfter(mTime, subDays(now, 1)) && isBefore(mTime, addDays(now, 2));
-     }).sort((a,b) => {
-        const tA = parseMatchDateTimeUTC(a.date, a.time);
-        const tB = parseMatchDateTimeUTC(b.date, b.time);
-        return tB - tA; // Newest first
-     });
-  }, [allMatches]);
-
-  useEffect(() => {
-    if (!selectedAuditMatchId && auditMatchesCandidates.length > 0) {
-      // Prioritize ongoing match if it's in the audit list
-      const ongoing = auditMatchesCandidates.find(m => {
-        const mTime = parseMatchDateTimeUTC(m.date, m.time);
-        const now = new Date();
-        return isBefore(subMinutes(mTime, 31), now) && isBefore(now, addHours(mTime, 5));
-      });
-      setSelectedAuditMatchId(ongoing ? ongoing.id : auditMatchesCandidates[0].id);
-    }
-  }, [auditMatchesCandidates, selectedAuditMatchId, allMatches]);
 
   useEffect(() => {
     if (!user) return;
@@ -255,138 +221,6 @@ export default function ProfileView({
         </button>
       </div>
 
-      {/* 🏃 SQUAD PICK LOG (PUBLIC AUDIT) — VISIBLE TO ALL */}
-      <div className="glass-card" style={{ marginBottom: '2rem', textAlign: 'left', padding: '1.5rem', background: 'var(--bg)' }}>
-        <p style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '1rem', color: 'var(--text)', opacity: 0.8 }}>
-          🏃 SQUAD PICK LOG (AUDIT)
-        </p>
-        
-        {/* ── Match Selector Chips ── */}
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '10px', marginBottom: '1rem', scrollbarWidth: 'none' }}>
-          {auditMatchesCandidates.length === 0 && (
-            <p style={{ fontSize: '0.65rem', opacity: 0.5 }}>No recent matches found.</p>
-          )}
-            {auditMatchesCandidates.map(m => {
-                const isSelected = selectedAuditMatchId === m.id;
-                const mTime = parseMatchDateTimeUTC(m.date, m.time);
-
-                const isUpcoming = isBefore(new Date(), subMinutes(mTime, 31));
-                const isOngoing  = isBefore(subMinutes(mTime, 31), new Date()) && isBefore(new Date(), addHours(mTime, 5));
-                const isSettled  = matchResults.some(r => r.match_id === m.id);
-                const isPast     = isAfter(new Date(), addHours(mTime, 5));
-                const isDone     = isSettled || isPast;
-
-                const acronyms = m.fixture.split(' vs ').map(t => TEAM_ACRONYMS[t] || t.split(' ').pop());
-
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => setSelectedAuditMatchId(m.id)}
-                    style={{
-                      padding: '8px 12px',
-                      borderRadius: '12px',
-                      border: '2px solid',
-                      borderColor: isSelected ? 'var(--teal)' : 'var(--border)',
-                      background: isSelected ? 'var(--teal)' : 'var(--surface)',
-                      color: isSelected ? 'white' : 'var(--text)',
-                      fontSize: '0.65rem',
-                      fontWeight: 800,
-                      whiteSpace: 'nowrap',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                      boxShadow: isSelected ? '0 4px 12px rgba(0, 150, 136, 0.3)' : 'none',
-                      transform: isSelected ? 'translateY(-2px)' : 'none',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '2px',
-                      minWidth: '95px'
-                    }}
-                  >
-                    <span style={{ fontSize: '0.55rem', opacity: isSelected ? 0.9 : 0.6 }}>{m.date.split(' ').slice(0, 2).join(' ')} · {m.time}</span>
-                    <span>{acronyms.join(' v ')}</span>
-                    {isOngoing && <span style={{ fontSize: '0.5rem', background: '#ff4444', color: 'white', padding: '1px 4px', borderRadius: '4px', marginTop: '2px', animation: 'pulse 2s infinite' }}>LIVE</span>}
-                    {isUpcoming && <span style={{ fontSize: '0.5rem', background: 'var(--teal)', color: 'white', padding: '1px 4px', borderRadius: '4px', marginTop: '2px' }}>UPCOMING</span>}
-                    {isDone && !isOngoing && <span style={{ fontSize: '0.5rem', background: 'var(--muted)', color: 'white', padding: '1px 4px', borderRadius: '4px', marginTop: '2px' }}>DONE</span>}
-                  </button>
-                );
-            })}
-        </div>
-
-        {/* ── User Audit Table ── */}
-        {(() => {
-          const activeAuditMatch = allMatches.find(m => m.id === selectedAuditMatchId) || auditMatchesCandidates[0];
-          if (!activeAuditMatch) return null;
-
-          const matchVotes = votes.filter(v => v.match_id === activeAuditMatch.id);
-          
-          return (
-            <div 
-              className="glass-card fade-in"
-              style={{ 
-                background: 'var(--surface)', 
-                padding: '1rem', 
-                borderRadius: '16px', 
-                border: '1px solid var(--border)',
-                boxShadow: 'inset 0 0 10px rgba(0,0,0,0.2)'
-              }}
-            >
-              <div style={{ fontSize: '0.75rem', fontWeight: 900, marginBottom: '1rem', color: 'var(--teal)', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', display: 'flex', justifyContent: 'space-between' }}>
-                <span>{activeAuditMatch.fixture}</span>
-                <span style={{ opacity: 0.6 }}>{activeAuditMatch.date}</span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {allUsers.length === 0 && <p style={{ fontSize: '0.6rem', opacity: 0.5 }}>Waiting for users...</p>}
-                {allUsers.map(u => {
-                  // Find newest vote for this user/match
-                  const v = matchVotes.find(vote => vote.user_name === u.displayName);
-                  const hasVoted = !!v;
-                  
-                  return (
-                    <div 
-                      key={u.id} 
-                      style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center', 
-                        padding: '10px 12px',
-                        background: 'var(--bg)',
-                        borderRadius: '10px',
-                        border: '1px solid var(--border)',
-                        transition: 'transform 0.1s'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <img src={u.photoURL} alt="" style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid var(--teal)' }} />
-                        <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>{u.displayName.split(' ')[0]}</span>
-                      </div>
-                      
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ 
-                          fontSize: '0.65rem', 
-                          fontWeight: 800, 
-                          color: hasVoted ? 'var(--text)' : 'var(--error)',
-                          opacity: hasVoted ? 1 : 0.5
-                        }}>
-                          {hasVoted ? format(new Date(v.created_at), 'MMM d, hh:mm:ss a') : 'NO PICK ❌'}
-                        </div>
-                        {hasVoted && (
-                          <div style={{ fontSize: '0.5rem', color: 'var(--teal)', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            Picked {TEAM_ACRONYMS[v.chosen_team] || v.chosen_team.split(' ').pop()}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
-      </div>
-
-
       {isAdmin && (
         <div className="glass-card fade-in" style={{ textAlign: 'left', padding: '1.5rem', marginBottom: '1.5rem', background: 'var(--bg)' }}>
           <h4 style={{ fontFamily: "'Baloo 2', sans-serif", borderBottom: '1px dashed var(--border)', paddingBottom: '0.5rem', marginBottom: '1.25rem', color: 'var(--orange)' }}>
@@ -395,94 +229,144 @@ export default function ProfileView({
 
           {/* ── Settle active matches ── */}
           <div style={{ marginBottom: '1.5rem' }}>
-            <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.75rem' }}>SETTLE RECENT MATCHES:</p>
-            {activeMatches.length === 0 && (
-              <p style={{ fontSize: '0.7rem', opacity: 0.5 }}>No active matches to settle right now.</p>
-            )}
-            {activeMatches.map(m => {
-              const state = autoSettling[m.id];
-              const busy  = state === 'loading';
-              const isSettlingManual = manualSettleId === m.id;
-              const teams = m.fixture.split(' vs ');
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+              <p style={{ fontSize: '0.7rem', fontWeight: 800, margin: 0, textTransform: 'uppercase' }}>SETTLE RECENT MATCHES:</p>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button onClick={() => setSettleFilter('IPL')} style={{ cursor: 'pointer', fontSize: '0.6rem', padding: '4px 8px', borderRadius: '6px', background: settleFilter === 'IPL' ? 'var(--teal)' : 'var(--bg)', color: settleFilter === 'IPL' ? '#fff' : 'var(--text)', border: '1px solid var(--border)', fontWeight: 800 }}>IPL</button>
+                <button onClick={() => setSettleFilter('ADHOC')} style={{ cursor: 'pointer', fontSize: '0.6rem', padding: '4px 8px', borderRadius: '6px', background: settleFilter === 'ADHOC' ? 'var(--teal)' : 'var(--bg)', color: settleFilter === 'ADHOC' ? '#fff' : 'var(--text)', border: '1px solid var(--border)', fontWeight: 800 }}>ADHOC</button>
+              </div>
+            </div>
+            
+            {settleFilter === 'IPL' ? (
+              <>
+                {activeMatches.length === 0 && (
+                  <p style={{ fontSize: '0.7rem', opacity: 0.5 }}>No active matches to settle right now.</p>
+                )}
+                {activeMatches.map(m => {
+                  const state = autoSettling[m.id];
+                  const busy  = state === 'loading';
+                  const isSettlingManual = manualSettleId === m.id;
+                  const teams = m.fixture.split(' vs ');
 
-              return (
-                <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px', background: 'var(--surface)', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 900 }}>Match {m.num}: {teams.map(t => TEAM_ACRONYMS[t] || t.split(' ').pop()).join(' v ')}</span>
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    {/* Manual settle mode or normal mode */}
-                    {!isSettlingManual ? (
-                      <>
-                        <button
-                          className="btn-primary"
-                          style={{ flex: 1, fontSize: '0.65rem', padding: '0.5rem', background: 'var(--bg)', color: 'var(--text)' }}
-                          onClick={() => setManualSettleId(m.id)}
-                        >
-                          ✍️ Manual Settle
-                        </button>
-                        <button
-                          className="btn-primary"
-                          disabled={busy || state === 'done'}
-                          style={{ flex: 1, fontSize: '0.65rem', padding: '0.5rem', background: busy ? 'var(--muted)' : 'var(--orange)', transition: 'background 0.2s' }}
-                          onClick={() => handleAutoSettle(m)}
-                        >
-                          {autoLabel(m.id)}
-                        </button>
-                      </>
-                    ) : (
-                      <div style={{ width: '100%' }}>
-                        <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--muted)', marginBottom: '0.6rem' }}>CHOOSE WINNER:</p>
-                        <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-                          {teams.map(t => (
+                  return (
+                    <div key={m.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px', background: 'var(--surface)', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 900 }}>Match {m.num}: {teams.map(t => TEAM_ACRONYMS[t] || t.split(' ').pop()).join(' v ')}</span>
+                      </div>
+                      
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {/* Manual settle mode or normal mode */}
+                        {!isSettlingManual ? (
+                          <>
                             <button
-                              key={t}
                               className="btn-primary"
-                              style={{ 
-                                flex: 1, 
-                                fontSize: '0.65rem', 
-                                padding: '0.5rem', 
-                                background: manualWinner === t ? 'var(--teal)' : 'var(--card)',
-                                border: manualWinner === t ? '2px solid var(--dark)' : '1px solid var(--border)'
-                              }}
-                              onClick={() => setManualWinner(t)}
+                              style={{ flex: 1, fontSize: '0.65rem', padding: '0.5rem', background: 'var(--bg)', color: 'var(--text)' }}
+                              onClick={() => setManualSettleId(m.id)}
                             >
-                              {TEAM_ACRONYMS[t] || t}
+                              ✍️ Manual Settle
                             </button>
-                          ))}
+                            <button
+                              className="btn-primary"
+                              disabled={busy || state === 'done'}
+                              style={{ flex: 1, fontSize: '0.65rem', padding: '0.5rem', background: busy ? 'var(--muted)' : 'var(--orange)', transition: 'background 0.2s' }}
+                              onClick={() => handleAutoSettle(m)}
+                            >
+                              {autoLabel(m.id)}
+                            </button>
+                          </>
+                        ) : (
+                          <div style={{ width: '100%' }}>
+                            <p style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--muted)', marginBottom: '0.6rem' }}>CHOOSE WINNER:</p>
+                            <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
+                              {teams.map(t => (
+                                <button
+                                  key={t}
+                                  className="btn-primary"
+                                  style={{ 
+                                    flex: 1, 
+                                    fontSize: '0.65rem', 
+                                    padding: '0.5rem', 
+                                    background: manualWinner === t ? 'var(--teal)' : 'var(--card)',
+                                    border: manualWinner === t ? '2px solid var(--dark)' : '1px solid var(--border)'
+                                  }}
+                                  onClick={() => setManualWinner(t)}
+                                >
+                                  {TEAM_ACRONYMS[t] || t}
+                                </button>
+                              ))}
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                className="btn-primary"
+                                disabled={!manualWinner}
+                                style={{ flex: 2, fontSize: '0.65rem', padding: '0.55rem', background: 'var(--teal)' }}
+                                onClick={async () => {
+                                  await onSettle(m.id, manualWinner);
+                                  setManualSettleId(null);
+                                  setManualWinner('');
+                                }}
+                              >
+                                CONFIRM ✅
+                              </button>
+                              <button
+                                className="btn-primary"
+                                style={{ flex: 1, fontSize: '0.65rem', padding: '0.55rem', background: 'var(--error)' }}
+                                onClick={() => { setManualSettleId(null); setManualWinner(''); }}
+                              >
+                                CANCEL
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            ) : (
+              <>
+                {(() => {
+                  const now = new Date();
+                  const unsettledAdhocs = adhocBets.filter(bet => {
+                      const settled = adhocResults.some(r => r.adhoc_bet_id === bet.id);
+                      return !settled;
+                  });
+                  if (unsettledAdhocs.length === 0) {
+                     return <p style={{ fontSize: '0.7rem', opacity: 0.5 }}>No adhoc bets to settle right now.</p>;
+                  }
+                  return unsettledAdhocs.map(bet => {
+                    const isLocked = new Date(bet.lock_at).getTime() <= now.getTime();
+                    return (
+                      <div key={bet.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px', background: 'var(--surface)', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 900, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span>{bet.statement}</span>
+                          <span style={{ fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', background: isLocked ? 'var(--error)' : 'var(--teal)', color: 'white' }}>
+                            {isLocked ? 'LOCKED' : 'OPEN'}
+                          </span>
                         </div>
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ display: 'flex', gap: '8px' }}>
                           <button
                             className="btn-primary"
-                            disabled={!manualWinner}
-                            style={{ flex: 2, fontSize: '0.65rem', padding: '0.55rem', background: 'var(--teal)' }}
-                            onClick={async () => {
-                              await onSettle(m.id, manualWinner);
-                              setManualSettleId(null);
-                              setManualWinner('');
-                            }}
+                            onClick={() => handleFinalizeAdhoc(bet.id, 'A')}
+                            style={{ flex: 1, padding: '0.55rem', fontWeight: 800, background: 'var(--teal)', fontSize: '0.65rem' }}
                           >
-                            CONFIRM ✅
+                            Settle A ({bet.option_a})
                           </button>
                           <button
                             className="btn-primary"
-                            style={{ flex: 1, fontSize: '0.65rem', padding: '0.55rem', background: 'var(--error)' }}
-                            onClick={() => { setManualSettleId(null); setManualWinner(''); }}
+                            onClick={() => handleFinalizeAdhoc(bet.id, 'B')}
+                            style={{ flex: 1, padding: '0.55rem', fontWeight: 800, background: 'var(--teal)', fontSize: '0.65rem' }}
                           >
-                            CANCEL
+                            Settle B ({bet.option_b})
                           </button>
                         </div>
                       </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                    );
+                  });
+                })()}
+              </>
+            )}
           </div>
-
-          {/* ── Admin Management Tools ── */}
-
 
 
           {/* ── Admin Management ── */}
@@ -524,6 +408,17 @@ export default function ProfileView({
                 </button>
               </div>
             ))}
+          </div>
+          
+          {/* ── Audit Hub ── */}
+          <div style={{ marginBottom: '1.5rem', borderTop: '1px dashed var(--border)', paddingTop: '1.5rem' }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.75rem', textTransform: 'uppercase', color: 'var(--mute)' }}>🕵️ SQUAD AUDIT HUB:</p>
+            <SquadModeToggle mode={squadViewMode} setMode={setSquadViewMode} t={t} />
+            {squadViewMode === SQUAD_VIEW_BET ? (
+              <IplAuditView {...iplAuditProps} />
+            ) : (
+              <AdhocAuditView {...adhocAuditProps} />
+            )}
           </div>
 
         </div>

@@ -11,8 +11,9 @@ import { parseMatchDateTimeUTC } from '../utils/utcDate.js';
  * @returns {Object[]} enriched match objects with `teams` array
  */
 export function computeActiveMatches(customMatches, _tick) {
-  const now = new Date();
-  const twoDaysLater = addDays(now, 2);
+  const now            = new Date();
+  const startOfToday  = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfDayAfterTomorrow = addDays(startOfToday, 2);
 
   const allSources = [
     ...IPL_SCHEDULE.map(m => ({ ...m, id: `ipl-2025-${m.num}` })),
@@ -23,7 +24,7 @@ export function computeActiveMatches(customMatches, _tick) {
     .filter(m => {
       const matchTime = parseMatchDateTimeUTC(m.date, m.time);
       const lockTime = subMinutes(matchTime, BET_LOCK_MINUTES);
-      return isBefore(now, lockTime) && isBefore(matchTime, twoDaysLater);
+      return isBefore(now, lockTime) && isBefore(matchTime, startOfDayAfterTomorrow);
     })
     .map(m => {
       if (!m.teams) {
@@ -85,7 +86,7 @@ export function computeOngoingMatches(customMatches, matchResults, _tick) {
  * @param {Object[]} allUsers  - registered users from Firestore (may have joined_at)
  * @returns {{ statsMap: Object, matchLogs: Object }}
  */
-export function computeSquadStats(votes, matchResults, allUsers = []) {
+export function computeSquadStats(votes = [], matchResults = [], allUsers = [], transactions = []) {
 
   // ── Step 1: Build clean lookup maps ────────────────────────────────────────
 
@@ -204,7 +205,22 @@ export function computeSquadStats(votes, matchResults, allUsers = []) {
     });
   });
 
-  // ── Step 5: Round all monetary values ─────────────────────────────────────
+  // ── Step 5: Append manual transactions (deposits/bonuses/withdrawals) ───────
+  
+  transactions.forEach(tx => {
+    const userStats = stats[tx.user_name];
+    if (userStats) {
+      if (tx.amount > 0) {
+        userStats.earnings += tx.amount;
+        userStats.won += tx.amount; // Treating positive adjustments as 'won' / added value
+      } else {
+        userStats.earnings += tx.amount;
+        userStats.spent += Math.abs(tx.amount); // Treating negative as spent/withdrawn
+      }
+    }
+  });
+
+  // ── Step 6: Round all monetary values ─────────────────────────────────────
 
   Object.values(stats).forEach(s => {
     s.earnings = Number(s.earnings.toFixed(2));
