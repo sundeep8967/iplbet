@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { isBefore, parse, subMinutes } from 'date-fns';
+import { isBefore, subMinutes } from 'date-fns';
 import { BET_LOCK_MINUTES } from '../models/constants';
+import { parseMatchDateTimeUTC } from '../utils/utcDate';
 
 /**
  * MatchTimer — local sub-component, used only within BetView.
@@ -12,7 +13,7 @@ function MatchTimer({ match, t }) {
   useEffect(() => {
     const update = () => {
       const now       = new Date();
-      const matchTime = parse(`${match.date} 2026 ${match.time}`, 'MMMM d yyyy h:mm a', new Date());
+      const matchTime = parseMatchDateTimeUTC(match.date, match.time);
       const lockTime  = subMinutes(matchTime, BET_LOCK_MINUTES);
 
       if (isBefore(now, lockTime)) {

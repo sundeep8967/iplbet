@@ -18,9 +18,10 @@
 
 import { createRequire }          from 'module';
 import { readFileSync, existsSync } from 'fs';
-import { parse, isBefore, addHours } from 'date-fns';
+import { isBefore, addHours } from 'date-fns';
 import { GoogleAuth } from 'google-auth-library';
 import { scrapeMatchResult } from './scrapeMatchResult.js';
+import { parseMatchDateTimeUTC } from '../src/utils/utcDate.js';
 
 // ── Service Account & REST Setup ──────────────────────────────────────────────
 let serviceAccount;
@@ -99,7 +100,7 @@ async function settleMatch(matchId, winnerTeam) {
 
 async function run() {
   console.log('\n🤖 Auto-settle starting…');
-  console.log(`   Time: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST\n`);
+  console.log(`   Time (UTC): ${new Date().toISOString()}\n`);
 
   const settledIds = await getAlreadySettledMatchIds();
   const now        = new Date();
@@ -109,7 +110,7 @@ async function run() {
     .map(m => ({
       ...m,
       id:        `ipl-2025-${m.num}`,
-      matchTime: parse(`${m.date} 2026 ${m.time}`, 'MMMM d yyyy h:mm a', new Date()),
+      matchTime: parseMatchDateTimeUTC(m.date, m.time),
     }))
     .filter(m => {
       if (settledIds.has(m.id)) return false;                      // already done

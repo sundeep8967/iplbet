@@ -1,6 +1,6 @@
 import React from 'react';
 import { Share2 } from 'lucide-react';
-import { parse } from 'date-fns';
+import { parseMatchDateTimeUTC } from '../utils/utcDate';
 
 // Reuse the same locked-picks card shown in BetView
 function OngoingMatchCardCompact({ match, votes, user, t }) {
@@ -144,8 +144,8 @@ export default function HomeView({ user, stats, onShare, votes, matchResults, al
       }));
 
     return [...entries, ...pendingVotes].sort((a,b) => {
-        const dateA = a.match ? parse(`${a.match.date} 2026 ${a.match.time}`, 'MMMM d yyyy h:mm a', new Date()) : 0;
-        const dateB = b.match ? parse(`${b.match.date} 2026 ${b.match.time}`, 'MMMM d yyyy h:mm a', new Date()) : 0;
+        const dateA = a.match ? parseMatchDateTimeUTC(a.match.date, a.match.time) : 0;
+        const dateB = b.match ? parseMatchDateTimeUTC(b.match.date, b.match.time) : 0;
         return dateB - dateA;
     });
   }, [votes, user, matchResults, allMatches]);

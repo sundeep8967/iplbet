@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { isBefore, addHours, addMinutes, parse, subMinutes, format } from 'date-fns';
+import { isBefore, addMinutes, subMinutes, format } from 'date-fns';
 import translations from '../i18n';
 
 // Services
@@ -39,6 +39,7 @@ import { computeActiveMatches, computeOngoingMatches, computeSquadStats, compute
 import { computeAdhocSquadStats, computeAdhocUserStats } from '../models/adhocStatsModel';
 import { BET_AMOUNT, BET_LOCK_MINUTES, IPL_SCHEDULE } from '../models/constants';
 import { SQUAD_VIEW_BET } from '../models/squadViewMode';
+import { parseMatchDateTimeUTC } from '../utils/utcDate';
 
 /**
  * useAppController
@@ -128,7 +129,7 @@ export function useAppController() {
       }
       return m;
     })
-    .sort((a, b) => parse(`${a.date} 2026 ${a.time}`, 'MMMM d yyyy h:mm a', new Date()) - parse(`${b.date} 2026 ${b.time}`, 'MMMM d yyyy h:mm a', new Date()));
+    .sort((a, b) => parseMatchDateTimeUTC(a.date, a.time) - parseMatchDateTimeUTC(b.date, b.time));
   }, [customMatches]);
   
   const activeMatches = useMemo(
@@ -172,11 +173,7 @@ export function useAppController() {
   const handleVote = async (matchId, team) => {
     const match = activeMatches.find(m => m.id === matchId);
     if (match) {
-      const matchTime = parse(
-        `${match.date} 2026 ${match.time}`,
-        'MMMM d yyyy h:mm a',
-        new Date()
-      );
+      const matchTime = parseMatchDateTimeUTC(match.date, match.time);
       const lockTime = subMinutes(matchTime, BET_LOCK_MINUTES);
       if (!isBefore(new Date(), lockTime)) {
         alert(`POLL CLOSED — Bets lock exactly ${BET_LOCK_MINUTES} minutes prior to start!`);
@@ -212,7 +209,7 @@ export function useAppController() {
     // 1. Validation: Match must have started at least 4 hours ago (IPL match duration buffer)
     const match = allMatches.find(m => m.id === matchId);
     if (match) {
-      const matchTime = parse(`${match.date} 2026 ${match.time}`, 'MMMM d yyyy h:mm a', new Date());
+      const matchTime = parseMatchDateTimeUTC(match.date, match.time);
       const settleLockTime = addMinutes(matchTime, 210);
       if (isBefore(new Date(), settleLockTime)) {
         alert(`FORBIDDEN: Match started less than 3h 30m ago. Settle period opens at ${format(settleLockTime, 'h:mm a')}.`);

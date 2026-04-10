@@ -1,6 +1,6 @@
 import React from 'react';
-import { parse } from 'date-fns';
 import { MISC_RESULTS, BET_AMOUNT } from '../models/constants';
+import { parseMatchDateTimeUTC } from '../utils/utcDate';
 
 export default function HistoryView({ userName, votes, matchResults, allMatches, matchLogs, onClose, t }) {
 
@@ -65,8 +65,8 @@ export default function HistoryView({ userName, votes, matchResults, allMatches,
       }));
 
     return [...entries, ...pendingVotes].sort((a,b) => {
-        const dateA = a.match ? parse(`${a.match.date} 2026 ${a.match.time}`, 'MMMM d yyyy h:mm a', new Date()) : 0;
-        const dateB = b.match ? parse(`${b.match.date} 2026 ${b.match.time}`, 'MMMM d yyyy h:mm a', new Date()) : 0;
+        const dateA = a.match ? parseMatchDateTimeUTC(a.match.date, a.match.time) : 0;
+        const dateB = b.match ? parseMatchDateTimeUTC(b.match.date, b.match.time) : 0;
         return dateB - dateA;
     });
   }, [votes, userName, matchResults, allMatches]);
