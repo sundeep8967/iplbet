@@ -85,7 +85,7 @@ function OverrideRow({ result, onOverride }) {
 export default function ProfileView({ 
   user, logout, onSync, onSettle, onOverrideResult, 
   activeMatches, matchResults, isAdmin, 
-  adminList, allUsers, onAddAdmin, onRemoveAdmin,
+  adminList, allUsers, onAddAdmin, onRemoveAdmin, pendingApprovals, onApproveUser,
   onViewHistory, t, language, onLanguageChange,
   appTheme, setAppTheme,
   adhocBets, adhocResults, handleFinalizeAdhoc,
@@ -437,6 +437,27 @@ export default function ProfileView({
                   onClick={() => onRemoveAdmin(a.id)}
                 >
                   Remove
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginBottom: '1.5rem', borderTop: '1px dashed var(--border)', paddingTop: '1.5rem' }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.75rem', textTransform: 'uppercase' }}>✅ PENDING USER APPROVALS:</p>
+            {!pendingApprovals?.length && (
+              <p style={{ fontSize: '0.7rem', opacity: 0.5 }}>No pending users.</p>
+            )}
+            {pendingApprovals?.map(u => (
+              <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)', border: '1.5px solid var(--border)', padding: '0.5rem 0.75rem', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.displayName || 'Unnamed user'}</div>
+                  <div style={{ fontSize: '0.65rem', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</div>
+                </div>
+                <button
+                  style={{ background: 'var(--teal)', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '0.6rem', fontWeight: 800, cursor: 'pointer' }}
+                  onClick={() => onApproveUser(u.id)}
+                >
+                  Approve
                 </button>
               </div>
             ))}

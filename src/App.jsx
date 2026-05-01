@@ -59,6 +59,8 @@ export default function App() {
     transactions,
     handleAddAdmin,
     handleRemoveAdmin,
+    pendingApprovals,
+    handleApproveUser,
     handleAddTransaction,
     adhocBets,
     adhocVotes,
@@ -214,6 +216,8 @@ export default function App() {
                 allUsers={allUsers}
                 onAddAdmin={handleAddAdmin}
                 onRemoveAdmin={handleRemoveAdmin}
+                pendingApprovals={pendingApprovals}
+                onApproveUser={handleApproveUser}
                 onViewHistory={() => setViewingHistoryFor(user.displayName)}
                 t={t}
                 language={language}

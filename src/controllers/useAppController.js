@@ -20,7 +20,7 @@ import {
   removeAdminUser as removeAdminUserService,
   subscribeAdmins,
   subscribeAllUsers,
-  saveUserToDatabase,
+  ensureUserApprovalStatus,
   subscribeTransactions,
   addTransaction,
   subscribeAdhocBets,
@@ -33,6 +33,7 @@ import {
   removeAdhocVote,
   finalizeAdhocWinner,
   deleteAdhocBet,
+  approveUser,
 } from '../services/firestoreService';
 
 // Models
@@ -68,14 +69,51 @@ export function useAppController() {
   const [adhocResults, setAdhocResults]     = useState([]);
   const [adhocPickEvents, setAdhocPickEvents] = useState([]);
   const [language, setLanguage]               = useState(localStorage.getItem('app_lang') || 'en');
+  const [isApprovedUser, setIsApprovedUser]   = useState(false);
 
   // Minute tick — drives activeMatches recomputation without a timer-in-useMemo
   const [tick, setTick] = useState(0);
 
   // ─── EFFECTS ────────────────────────────────────────────────────────────────
 
-  // 1. Auth listener
-  useEffect(() => onAuthChanged(u => { setUser(u); setLoading(false); }), []);
+  // Admin check based on user email (fallback env + realtime db list)
+  const ENV_ADMINS = (import.meta.env.VITE_ADMIN_EMAILS || 'sundeep8967@gmail.com')
+    .split(',')
+    .map(e => e.trim())
+    .filter(Boolean);
+
+  // 1. Auth listener + approval gate
+  useEffect(() => onAuthChanged(async (u) => {
+    if (!u) {
+      setUser(null);
+      setIsApprovedUser(false);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const isPrivileged = ENV_ADMINS.includes(u.email);
+    try {
+      const approved = await ensureUserApprovalStatus(u, isPrivileged);
+      if (!approved) {
+        alert('Your account is pending admin approval. Please wait for approval before logging in.');
+        await logoutUser();
+        setUser(null);
+        setIsApprovedUser(false);
+      } else {
+        setUser(u);
+        setIsApprovedUser(true);
+      }
+    } catch (e) {
+      console.error(e);
+      alert('Login check failed. Please try again.');
+      await logoutUser();
+      setUser(null);
+      setIsApprovedUser(false);
+    } finally {
+      setLoading(false);
+    }
+  }), []);
 
   // 2. Heartbeat tick (every 5 seconds for precise bet locking)
   useEffect(() => {
@@ -83,14 +121,9 @@ export function useAppController() {
     return () => clearInterval(id);
   }, []);
 
-  // Fire-and-forget sync for saving user emails
-  useEffect(() => {
-    if (user) saveUserToDatabase(user);
-  }, [user]);
-
   // 3. Real-time Firestore subscriptions
   useEffect(() => {
-    if (!user) return; // Wait until the user is authenticated
+    if (!user || !isApprovedUser) return; // Wait until auth + approval are complete
 
     const unsubVotes   = subscribeVotes(setVotes);
     const unsubResults = subscribeResults(setMatchResults);
@@ -115,7 +148,7 @@ export function useAppController() {
       unsubAdhocR();
       unsubAdhocE();
     };
-  }, [user]);
+  }, [user, isApprovedUser]);
 
   // ─── DERIVED STATE (MODELS) ──────────────────────────────────────────────────
 
@@ -254,9 +287,18 @@ export function useAppController() {
     }
   };
 
-  // Admin check based on user email (fallback env + realtime db list)
-  const ENV_ADMINS = (import.meta.env.VITE_ADMIN_EMAILS || 'sundeep8967@gmail.com').split(',');
   const isAdmin = user && (ENV_ADMINS.includes(user.email) || adminList.some(a => a.email === user.email));
+  const pendingApprovals = allUsers.filter(u => u.approved === false && !ENV_ADMINS.includes(u.email));
+
+  const handleApproveUser = async (userId) => {
+    if (!isAdmin || !user) return;
+    try {
+      await approveUser(userId, user.email);
+    } catch (e) {
+      console.error(e);
+      alert('Failed to approve user: ' + e.message);
+    }
+  };
 
   // Translation helper
   const t = useCallback((key) => {
@@ -387,6 +429,8 @@ export function useAppController() {
     handleShare,
     handleAddAdmin,
     handleRemoveAdmin,
+    pendingApprovals,
+    handleApproveUser,
     handleAddTransaction: addTransaction,
     handleCreateAdhocBet,
     handleAdhocVote,
