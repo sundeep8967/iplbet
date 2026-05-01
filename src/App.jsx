@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 // Controller
 import { useAppController } from './controllers/useAppController';
@@ -15,6 +15,13 @@ import AdhocHistoryView from './views/AdhocHistoryView';
 import BottomNav    from './views/BottomNav';
 
 export default function App() {
+  const [appTheme, setAppTheme] = useState(() => localStorage.getItem('appTheme') || 'csk');
+
+  useEffect(() => {
+    localStorage.setItem('appTheme', appTheme);
+    document.documentElement.setAttribute('data-theme', appTheme);
+  }, [appTheme]);
+
   const {
     user,
     loading,
@@ -52,6 +59,8 @@ export default function App() {
     transactions,
     handleAddAdmin,
     handleRemoveAdmin,
+    pendingApprovals,
+    handleApproveUser,
     handleAddTransaction,
     adhocBets,
     adhocVotes,
@@ -74,14 +83,16 @@ export default function App() {
 
   return (
     <>
-      <div style={{ position: 'fixed', inset: 0, zIndex: -1, overflow: 'hidden' }}>
-        <img
-          src="/bg_poster.jpeg"
-          alt="Rivalry Background"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.15 }}
-        />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(rgba(255,255,255,0.7), #f4f4f4)' }} />
+      <div className="dynamic-bg">
+        <div className="gradient-sphere sphere-1"></div>
+        <div className="gradient-sphere sphere-2"></div>
+        <div className="gradient-sphere sphere-3"></div>
+        <div className="gradient-sphere sphere-4"></div>
       </div>
+
+      {(appTheme === 'csk' ? ['🦁', '💛', 'CSK', 'Whistle Podu', '🏆', '💛'] : ['🔴', '👑', 'RCB', 'Play Bold', '🏆', '🔴']).map((doodle, i) => (
+        <div key={i} className={`bg-doodle doodle-${i+1}`}>{doodle}</div>
+      ))}
 
       <div className="app-container">
         {!user ? (
@@ -205,10 +216,14 @@ export default function App() {
                 allUsers={allUsers}
                 onAddAdmin={handleAddAdmin}
                 onRemoveAdmin={handleRemoveAdmin}
+                pendingApprovals={pendingApprovals}
+                onApproveUser={handleApproveUser}
                 onViewHistory={() => setViewingHistoryFor(user.displayName)}
                 t={t}
                 language={language}
                 onLanguageChange={handleLanguageChange}
+                appTheme={appTheme}
+                setAppTheme={setAppTheme}
                 adhocBets={adhocBets}
                 adhocResults={adhocResults}
                 handleFinalizeAdhoc={handleFinalizeAdhoc}

@@ -315,7 +315,7 @@ export default function ScheduleView({ isAdmin, onAddMatch, allMatches, matchRes
                     {m.is_custom ? 'CUSTOM MATCH' : `MATCH ${m.num}`}
                   </span>
                   {isToday && (
-                    <span style={{ background: 'var(--orange)', color: 'white', fontSize: '0.6rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                    <span className="today-badge">
                       TODAY 🔥
                     </span>
                   )}

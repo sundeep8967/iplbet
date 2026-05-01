@@ -42,6 +42,14 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
 
+    function isApprovedUser() {
+      if (!isSignedIn()) return false;
+      if (isAdmin()) return true;
+      if (!exists(/databases/$(database)/documents/users/$(request.auth.uid))) return false;
+      let u = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return !('approved' in u) || u.approved == true;
+    }
+
     /** IPL vote doc id must be {matchId}_{uid} and belong to the signed-in user */
     function iplVoteUid() {
       return request.resource.data.user_id != null
@@ -74,54 +82,64 @@ service cloud.firestore {
     }
 
     match /votes/{voteId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && validIplVoteWrite(voteId);
-      allow update: if isSignedIn() && validIplVoteWrite(voteId);
-      allow delete: if isSignedIn() && validIplVoteDelete(voteId);
+      allow read: if isApprovedUser();
+      allow create: if isApprovedUser() && validIplVoteWrite(voteId);
+      allow update: if isApprovedUser() && validIplVoteWrite(voteId);
+      allow delete: if isApprovedUser() && validIplVoteDelete(voteId);
     }
 
     match /match_results/{resultId} {
-      allow read: if isSignedIn();
+      allow read: if isApprovedUser();
       allow create, update: if isAdmin();
       allow delete: if false;
     }
 
     match /matches/{matchId} {
-      allow read: if isSignedIn();
+      allow read: if isApprovedUser();
       allow create, update, delete: if isAdmin();
     }
 
     match /admins/{adminId} {
-      allow read: if isSignedIn();
+      allow read: if isApprovedUser();
       allow create, delete: if isAdmin();
       allow update: if false;
     }
 
     match /users/{userId} {
-      allow read: if isSignedIn();
-      allow create, update: if isOwner(userId);
+      allow read: if isApprovedUser();
+      allow create: if isOwner(userId)
+        && (
+          (isAdmin() && request.resource.data.approved == true)
+          || (!isAdmin() && request.resource.data.approved == false)
+        );
+      allow update: if (
+        isOwner(userId)
+        && request.resource.data.approved == resource.data.approved
+        && request.resource.data.approved_at == resource.data.approved_at
+        && request.resource.data.approved_by == resource.data.approved_by
+      ) || isAdmin();
       allow delete: if false;
     }
 
     match /user_preferences/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isApprovedUser() && isOwner(userId);
     }
 
     match /transactions/{txId} {
-      allow read: if isSignedIn();
+      allow read: if isApprovedUser();
       allow create: if isAdmin();
       allow update, delete: if false;
     }
 
     match /adhoc_bets/{betId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn()
+      allow read: if isApprovedUser();
+      allow create: if isApprovedUser()
         && request.resource.data.created_by_uid == request.auth.uid
         && request.resource.data.keys().hasAll([
           'statement', 'option_a', 'option_b', 'stake_per_head', 'lock_at',
           'created_by_uid', 'created_by_name', 'created_at'
         ]);
-      allow update: if isSignedIn()
+      allow update: if isApprovedUser()
         && resource.data.created_by_uid == request.auth.uid
         && request.resource.data.created_by_uid == resource.data.created_by_uid
         && request.resource.data.created_by_name == resource.data.created_by_name
@@ -135,21 +153,21 @@ service cloud.firestore {
     }
 
     match /adhoc_votes/{voteId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn() && validAdhocVoteWrite(voteId);
-      allow update: if isSignedIn() && validAdhocVoteWrite(voteId);
-      allow delete: if isSignedIn() && voteId.matches('.*_' + request.auth.uid + '$');
+      allow read: if isApprovedUser();
+      allow create: if isApprovedUser() && validAdhocVoteWrite(voteId);
+      allow update: if isApprovedUser() && validAdhocVoteWrite(voteId);
+      allow delete: if isApprovedUser() && voteId.matches('.*_' + request.auth.uid + '$');
     }
 
     match /adhoc_results/{resultId} {
-      allow read: if isSignedIn();
+      allow read: if isApprovedUser();
       allow create, update: if isAdmin();
       allow delete: if false;
     }
 
     match /adhoc_pick_events/{eventId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn()
+      allow read: if isApprovedUser();
+      allow create: if isApprovedUser()
         && request.resource.data.user_id == request.auth.uid
         && request.resource.data.adhoc_bet_id is string
         && request.resource.data.user_name is string

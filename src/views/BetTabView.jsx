@@ -26,7 +26,7 @@ export default function BetTabView({
       </div>
 
       {/* Disclaimer / Rule Box */}
-      <div style={{ background: 'var(--orange)', color: 'white', padding: '1rem', borderRadius: '12px', marginBottom: '1.25rem', fontSize: '0.78rem', fontWeight: 800, border: '3px solid var(--dark)', lineHeight: '1.4' }}>
+      <div className="orange-rule-box" style={{ marginBottom: '1.25rem' }}>
         ⚠️ RULE: Everyday, ₹10 is deducted automatically, even if you don't choose! If you win, you get your share of the total pot (₹10 from every member).
       </div>
 

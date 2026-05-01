@@ -324,6 +324,76 @@ export async function saveUserToDatabase(user) {
 }
 
 /**
+ * Upsert user profile and return whether the user is approved to access app data.
+ * New non-admin users are created with approved=false and must be approved manually.
+ *
+ * @param {import('firebase/auth').User} user
+ * @param {boolean} isPrivilegedEmail
+ * @returns {Promise<boolean>}
+ */
+export async function ensureUserApprovalStatus(user, isPrivilegedEmail = false) {
+  if (!user || !user.uid) return false;
+
+  const userRef = doc(db, 'users', user.uid);
+  const snap = await getDoc(userRef);
+  const now = new Date().toISOString();
+
+  const baseData = {
+    email: user.email,
+    displayName: user.displayName,
+    photoURL: user.photoURL,
+    last_login: now,
+  };
+
+  if (!snap.exists()) {
+    await setDoc(userRef, {
+      ...baseData,
+      joined_at: now,
+      approved: Boolean(isPrivilegedEmail),
+      approved_at: isPrivilegedEmail ? now : null,
+      approved_by: isPrivilegedEmail ? 'system' : null,
+    }, { merge: true });
+    return Boolean(isPrivilegedEmail);
+  }
+
+  const existing = snap.data() || {};
+  const updateData = { ...baseData };
+  if (!existing.joined_at) updateData.joined_at = now;
+  await setDoc(userRef, updateData, { merge: true });
+
+  if (isPrivilegedEmail && !existing.approved) {
+    await setDoc(userRef, {
+      approved: true,
+      approved_at: now,
+      approved_by: 'system',
+    }, { merge: true });
+    return true;
+  }
+
+  // Backward compatibility: legacy users (without explicit approved flag)
+  // stay allowed. Only newly created users are blocked by default.
+  if (typeof existing.approved === 'undefined') {
+    return true;
+  }
+
+  return Boolean(existing.approved);
+}
+
+/**
+ * Mark a user account as approved (admin action).
+ * @param {string} userId
+ * @param {string} approvedBy
+ */
+export async function approveUser(userId, approvedBy) {
+  const now = new Date().toISOString();
+  await updateDoc(doc(db, 'users', userId), {
+    approved: true,
+    approved_at: now,
+    approved_by: approvedBy || 'admin',
+  });
+}
+
+/**
  * Set the explicit email opt-out/opt-in flag for a given user.
  */
 export async function setNotificationPreference(uid, userEmail, sendEmails) {

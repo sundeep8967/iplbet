@@ -94,7 +94,7 @@ export default function AdhocAuditView({ adhocBets, adhocVotes, allUsers, t }) {
                       }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <img src={u.photoURL} alt="" style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid var(--teal)' }} />
+                        <img src={u.photoURL} referrerPolicy="no-referrer" alt="" style={{ width: '22px', height: '22px', borderRadius: '50%', border: '1.5px solid var(--teal)' }} />
                         <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>{u.displayName.split(' ')[0]}</span>
                       </div>
 

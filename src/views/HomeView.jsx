@@ -301,8 +301,8 @@ export default function HomeView({
           alt="The Squad" 
           style={{ width: '100%', height: '140px', objectFit: 'cover', display: 'block' }} 
         />
-        <div style={{ padding: '1rem' }}>
-          <h4 style={{ fontWeight: 800, margin: 0 }}>{t('live_hot_takes')}</h4>
+        <div className="yellow-bg-card">
+          <h4 style={{ margin: 0 }}>{t('live_hot_takes')}</h4>
           <p style={{ fontSize: '0.85rem', marginTop: '0.3rem', marginBottom: 0 }}>{t('login_desc')}</p>
         </div>
       </div>

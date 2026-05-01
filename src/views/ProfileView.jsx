@@ -32,12 +32,12 @@ function OverrideRow({ result, onOverride }) {
           <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--muted)', marginBottom: '2px' }}>
             {result.match_id.replace('ipl-2025-', 'Match ')}
             {result.override && (
-              <span style={{ marginLeft: '6px', background: 'var(--orange)', color: 'white', fontSize: '0.55rem', padding: '1px 5px', borderRadius: '4px' }}>
+              <span style={{ marginLeft: '6px', background: 'var(--orange)', color: '#1a0f0a', fontSize: '0.55rem', padding: '1px 5px', borderRadius: '4px' }}>
                 OVERRIDDEN
               </span>
             )}
             {result.auto && !result.override && (
-              <span style={{ marginLeft: '6px', background: 'var(--muted)', color: 'white', fontSize: '0.55rem', padding: '1px 5px', borderRadius: '4px' }}>
+              <span style={{ marginLeft: '6px', background: 'var(--muted)', color: '#1a1a1a', fontSize: '0.55rem', padding: '1px 5px', borderRadius: '4px' }}>
                 AUTO
               </span>
             )}
@@ -85,8 +85,9 @@ function OverrideRow({ result, onOverride }) {
 export default function ProfileView({ 
   user, logout, onSync, onSettle, onOverrideResult, 
   activeMatches, matchResults, isAdmin, 
-  adminList, allUsers, onAddAdmin, onRemoveAdmin,
+  adminList, allUsers, onAddAdmin, onRemoveAdmin, pendingApprovals, onApproveUser,
   onViewHistory, t, language, onLanguageChange,
+  appTheme, setAppTheme,
   adhocBets, adhocResults, handleFinalizeAdhoc,
   squadViewMode, setSquadViewMode, iplAuditProps, adhocAuditProps
 }) {
@@ -151,6 +152,7 @@ export default function ProfileView({
         <img
           src={user.photoURL}
           alt="profile"
+          referrerPolicy="no-referrer"
           style={{ width: '80px', height: '80px', borderRadius: '50%', border: '4px solid var(--orange)', marginBottom: '1rem' }}
         />
         {isAdmin && (
@@ -186,6 +188,36 @@ export default function ProfileView({
               {langKey === 'te' ? t('telugu') : langKey === 'kn' ? t('kannada') : t('english')}
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="glass-card" style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--surface)' }}>
+        <div style={{ textAlign: 'left', marginBottom: '1rem' }}>
+          <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>App Theme 🎨</div>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            onClick={() => setAppTheme('csk')}
+            style={{
+              flex: 1, padding: '10px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer',
+              border: appTheme === 'csk' ? '2px solid #facc15' : '1px solid var(--border)',
+              background: appTheme === 'csk' ? 'rgba(250,204,21,0.1)' : 'var(--bg)',
+              color: appTheme === 'csk' ? '#facc15' : 'var(--text)'
+            }}
+          >
+            CSK 💛
+          </button>
+          <button 
+            onClick={() => setAppTheme('rcb')}
+            style={{
+              flex: 1, padding: '10px', borderRadius: '12px', fontWeight: 800, cursor: 'pointer',
+              border: appTheme === 'rcb' ? '2px solid #ef4444' : '1px solid var(--border)',
+              background: appTheme === 'rcb' ? 'rgba(239,68,68,0.1)' : 'var(--bg)',
+              color: appTheme === 'rcb' ? '#ef4444' : 'var(--text)'
+            }}
+          >
+            RCB ❤️
+          </button>
         </div>
       </div>
 
@@ -299,7 +331,7 @@ export default function ProfileView({
                               <button
                                 className="btn-primary"
                                 disabled={!manualWinner}
-                                style={{ flex: 2, fontSize: '0.65rem', padding: '0.55rem', background: 'var(--teal)' }}
+                                style={{ flex: 2, fontSize: '0.65rem', padding: '0.55rem', background: 'var(--teal)', color: '#ffffff' }}
                                 onClick={async () => {
                                   await onSettle(m.id, manualWinner);
                                   setManualSettleId(null);
@@ -348,14 +380,14 @@ export default function ProfileView({
                           <button
                             className="btn-primary"
                             onClick={() => handleFinalizeAdhoc(bet.id, 'A')}
-                            style={{ flex: 1, padding: '0.55rem', fontWeight: 800, background: 'var(--teal)', fontSize: '0.65rem' }}
+                            style={{ flex: 1, padding: '0.55rem', fontWeight: 800, background: 'var(--teal)', fontSize: '0.65rem', color: '#ffffff' }}
                           >
                             Settle A ({bet.option_a})
                           </button>
                           <button
                             className="btn-primary"
                             onClick={() => handleFinalizeAdhoc(bet.id, 'B')}
-                            style={{ flex: 1, padding: '0.55rem', fontWeight: 800, background: 'var(--teal)', fontSize: '0.65rem' }}
+                            style={{ flex: 1, padding: '0.55rem', fontWeight: 800, background: 'var(--teal)', fontSize: '0.65rem', color: '#ffffff' }}
                           >
                             Settle B ({bet.option_b})
                           </button>
@@ -405,6 +437,27 @@ export default function ProfileView({
                   onClick={() => onRemoveAdmin(a.id)}
                 >
                   Remove
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginBottom: '1.5rem', borderTop: '1px dashed var(--border)', paddingTop: '1.5rem' }}>
+            <p style={{ fontSize: '0.7rem', fontWeight: 800, marginBottom: '0.75rem', textTransform: 'uppercase' }}>✅ PENDING USER APPROVALS:</p>
+            {!pendingApprovals?.length && (
+              <p style={{ fontSize: '0.7rem', opacity: 0.5 }}>No pending users.</p>
+            )}
+            {pendingApprovals?.map(u => (
+              <div key={u.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)', border: '1.5px solid var(--border)', padding: '0.5rem 0.75rem', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.displayName || 'Unnamed user'}</div>
+                  <div style={{ fontSize: '0.65rem', opacity: 0.7, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{u.email}</div>
+                </div>
+                <button
+                  style={{ background: 'var(--teal)', color: 'white', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '0.6rem', fontWeight: 800, cursor: 'pointer' }}
+                  onClick={() => onApproveUser(u.id)}
+                >
+                  Approve
                 </button>
               </div>
             ))}
