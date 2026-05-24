@@ -72,8 +72,10 @@ export const IPL_SCHEDULE = [
   { num: 66, date: 'May 21',    time: '7:30 PM', fixture: 'Gujarat Titans vs Chennai Super Kings' },
   { num: 67, date: 'May 22',    time: '7:30 PM', fixture: 'Sunrisers Hyderabad vs Royal Challengers Bengaluru' },
   { num: 68, date: 'May 23',    time: '7:30 PM', fixture: 'Lucknow Super Giants vs Punjab Kings' },
-  { num: 69, date: 'May 24',    time: '3:30 PM', fixture: 'Kolkata Knight Riders vs Delhi Capitals' },
-  { num: 70, date: 'May 24',    time: '7:30 PM', fixture: 'Mumbai Indians vs Rajasthan Royals' },
+  { num: 69, date: 'May 24',    time: '3:30 PM', fixture: 'Mumbai Indians vs Rajasthan Royals' },
+  { num: 70, date: 'May 24',    time: '7:30 PM', fixture: 'Kolkata Knight Riders vs Delhi Capitals' },
+  { num: 71, date: 'May 26',    time: '7:30 PM', fixture: 'Royal Challengers Bengaluru vs Gujarat Titans' },
+  { num: 72, date: 'May 27',    time: '7:30 PM', fixture: 'Sunrisers Hyderabad vs Rajasthan Royals' },
 ];
 
 export const MISC_RESULTS = {
