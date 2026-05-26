@@ -27,7 +27,7 @@ export default function BetTabView({
 
       {/* Disclaimer / Rule Box */}
       <div className="orange-rule-box" style={{ marginBottom: '1.25rem' }}>
-        ⚠️ RULE: Everyday, ₹10 is deducted automatically, even if you don't choose! If you win, you get your share of the total pot (₹10 from every member).
+        ⚠️ RULE: Everyday, ₹10 is deducted automatically, even if you don't choose! If you win, you get your share of the total pot (₹10 from every member). For playoff matches, the deduction is ₹20. Join early to be part of the action! 🏆
       </div>
 
       <SquadModeToggle mode={squadViewMode} setMode={setSquadViewMode} t={t} />

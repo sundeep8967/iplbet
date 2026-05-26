@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Share2 } from 'lucide-react';
 import { isBefore, format } from 'date-fns';
 import { parseMatchDateTimeUTC } from '../utils/utcDate';
+import { getBetAmount } from '../models/constants';
 import { SQUAD_VIEW_BET, SQUAD_VIEW_ADHOC_BET } from '../models/squadViewMode';
 
 function OngoingAdhocCardCompact({ bet, adhocVotes, user, onNavigate, t }) {
@@ -186,7 +187,7 @@ function OngoingMatchCardCompact({ match, votes, user, t }) {
       </div>
       {missed.length > 0 && (
         <div style={{ borderTop: '1.5px dashed var(--border)', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--error)', whiteSpace: 'nowrap' }}>{t('auto_deduct')} −₹10:</span>
+          <span style={{ fontSize: '0.62rem', fontWeight: 800, color: 'var(--error)', whiteSpace: 'nowrap' }}>{t('auto_deduct')} −₹{getBetAmount(match)}:</span>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             {missed.map(m => (
               <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -207,7 +208,6 @@ export default function HomeView({
   ongoingMatches, activeAdhocBets, adhocVotes, matchLogs, 
   setActiveTab, setSquadViewMode, t 
 }) {
-  const BET_AMOUNT = 10;
   
   const myVotes = React.useMemo(() => {
     if (!user) return [];
@@ -235,6 +235,7 @@ export default function HomeView({
           const log = matchLogs?.[m.id];
           if (log) {
             const wasActive = log.activeMembers.includes(user.displayName);
+            const betAmount = log.amountPerMember ?? getBetAmount(m.id);
             
             if (!wasActive) {
               status = 'not_joined';
@@ -245,10 +246,10 @@ export default function HomeView({
             } else {
               const isWinner = userVote && userVote.chosen_team === log.winner;
               if (isWinner) {
-                payout = log.individualPayout - BET_AMOUNT;
+                payout = log.individualPayout - betAmount;
                 status = 'won';
               } else {
-                payout = -BET_AMOUNT;
+                payout = -betAmount;
                 status = 'lost';
               }
             }

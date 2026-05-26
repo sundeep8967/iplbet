@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { isBefore, subMinutes } from 'date-fns';
-import { BET_LOCK_MINUTES } from '../models/constants';
+import { BET_LOCK_MINUTES, getBetAmount } from '../models/constants';
 import { parseMatchDateTimeUTC } from '../utils/utcDate';
 
 /**
@@ -111,7 +111,7 @@ function OngoingMatchCard({ match, votes, user, t }) {
       {/* Missed row */}
       {missed.length > 0 && (
         <div style={{ borderTop: '1.5px dashed var(--border)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--error)', whiteSpace: 'nowrap' }}>{t('missed')} −₹10:</span>
+          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--error)', whiteSpace: 'nowrap' }}>{t('missed')} −₹{getBetAmount(match)}:</span>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
             {missed.map(m => (
               <div key={m.name} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>

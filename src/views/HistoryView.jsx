@@ -1,5 +1,5 @@
 import React from 'react';
-import { MISC_RESULTS, BET_AMOUNT } from '../models/constants';
+import { MISC_RESULTS, getBetAmount } from '../models/constants';
 import { parseMatchDateTimeUTC } from '../utils/utcDate';
 
 export default function HistoryView({ userName, votes, matchResults, allMatches, matchLogs, onClose, t }) {
@@ -23,6 +23,7 @@ export default function HistoryView({ userName, votes, matchResults, allMatches,
           const log = matchLogs?.[m.id];
           if (log) {
             const wasActive = log.activeMembers.includes(userName);
+            const betAmount = log.amountPerMember ?? getBetAmount(m.id);
             
             if (!wasActive) {
               status = 'not_joined';
@@ -33,10 +34,10 @@ export default function HistoryView({ userName, votes, matchResults, allMatches,
             } else {
               const isWinner = userVote && userVote.chosen_team === log.winner;
               if (isWinner) {
-                payout = log.individualPayout - BET_AMOUNT;
+                payout = log.individualPayout - betAmount;
                 status = 'won';
               } else {
-                payout = -BET_AMOUNT;
+                payout = -betAmount;
                 status = 'lost';
               }
             }

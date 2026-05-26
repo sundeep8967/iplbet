@@ -139,6 +139,7 @@ async function run() {
 
     const [team1, team2] = targetMatch.fixture.split(' vs ');
 
+    const betAmount = targetMatch.num === 71 || targetMatch.num === 72 ? 20 : 10;
     const mailOptions = {
       from: `"ChaiBet Reminders" <${process.env.GMAIL_USER}>`,
       to: emailAddress,
@@ -150,7 +151,7 @@ async function run() {
           <p>The match between <b>${team1}</b> and <b>${team2}</b> starts in less than 30 minutes!</p>
           <hr style="border: 1px dashed #ccc; margin: 20px 0;" />
           <p style="font-size: 1.2rem; font-weight: bold;">You haven't placed your bet yet.</p>
-          <p style="color: #ef4444;">If you don't vote, you'll be automatically deducted ₹10!</p>
+          <p style="color: #ef4444;">If you don't vote, you'll be automatically deducted ₹${betAmount}!</p>
           <br/>
           <a href="https://iplbet.vercel.app/" style="background: #14b8a6; color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; font-size: 1.1rem;">Cast Your Vote Now</a>
           <br/><br/>
