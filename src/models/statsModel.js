@@ -1,5 +1,5 @@
 import { isBefore, addDays, subMinutes, addHours } from 'date-fns';
-import { IPL_SCHEDULE, BET_AMOUNT, BET_LOCK_MINUTES, MISC_RESULTS } from './constants.js';
+import { IPL_SCHEDULE, BET_AMOUNT, BET_LOCK_MINUTES, MISC_RESULTS, getBetAmount } from './constants.js';
 import { parseMatchDateTimeUTC } from '../utils/utcDate.js';
 
 /**
@@ -79,6 +79,7 @@ export function computeOngoingMatches(customMatches, matchResults, _tick) {
  * COMPULSORY RULE:
  *   - Every user who joined BEFORE a match settles is charged ₹10,
  *     regardless of whether they voted on that match.
+ *   - For PLayoff matches the charge is ₹20.
  *   - Users who joined AFTER a match settled are NOT charged for it.
  *
  * @param {Object[]} votes
@@ -165,7 +166,7 @@ export function computeSquadStats(votes = [], matchResults = [], allUsers = [], 
     const mVotes      = votes.filter(v => v.match_id === matchId);
     const settledTime = new Date(res.settled_at).getTime();
 
-    // Everyone who joined before this match was settled → charged ₹10.
+    // Everyone who joined before this match was settled → charged ₹20.
     const activeMembers = Object.keys(stats).filter(name => {
       const joinTimestamp = getJoinDate(name);
       return joinTimestamp && joinTimestamp <= settledTime;
@@ -174,8 +175,9 @@ export function computeSquadStats(votes = [], matchResults = [], allUsers = [], 
     if (activeMembers.length === 0) return;
 
     const winnersCount = mVotes.filter(v => v.chosen_team === winner).length;
+    const matchBetAmount = getBetAmount(matchId);
 
-    const pot              = activeMembers.length * BET_AMOUNT;
+    const pot              = activeMembers.length * matchBetAmount;
     const individualPayout = winnersCount > 0 ? (pot / winnersCount) : 0;
 
     // Log the exact math for this match
@@ -184,15 +186,16 @@ export function computeSquadStats(votes = [], matchResults = [], allUsers = [], 
       winnersCount,
       individualPayout,
       winner,
-      activeMembers
+      activeMembers,
+      amountPerMember: matchBetAmount,
     };
 
     if (winnersCount === 0) return;
 
-    // Deduct ₹10 from every active member (compulsory).
+    // Deduct the match-specific bet amount from every active member.
     activeMembers.forEach(name => {
-      stats[name].earnings -= BET_AMOUNT;
-      stats[name].spent    += BET_AMOUNT;
+      stats[name].earnings -= matchBetAmount;
+      stats[name].spent    += matchBetAmount;
     });
 
     // Distribute the exact individualPayout among match winners

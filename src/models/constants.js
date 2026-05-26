@@ -3,6 +3,34 @@
 export const BET_AMOUNT = 10;
 export const BET_LOCK_MINUTES = 31;
 
+export const SPECIAL_BET_AMOUNTS = {
+  71: 20,
+  72: 20,
+};
+
+export function getBetAmount(matchOrId) {
+  if (matchOrId == null) return BET_AMOUNT;
+  if (typeof matchOrId === 'object') {
+    if (matchOrId.id) return getBetAmount(matchOrId.id);
+    if (matchOrId.num) return getBetAmount(matchOrId.num);
+  }
+  if (typeof matchOrId === 'string') {
+    if (SPECIAL_BET_AMOUNTS[matchOrId] != null) {
+      return SPECIAL_BET_AMOUNTS[matchOrId];
+    }
+    const matchNum = parseInt(matchOrId.replace(/^ipl-2025-/, ''), 10);
+    if (!Number.isNaN(matchNum)) return getBetAmount(matchNum);
+    return BET_AMOUNT;
+  }
+  if (typeof matchOrId === 'number') {
+    if (SPECIAL_BET_AMOUNTS[matchOrId] != null) {
+      return SPECIAL_BET_AMOUNTS[matchOrId];
+    }
+    return BET_AMOUNT;
+  }
+  return BET_AMOUNT;
+}
+
 export const IPL_SCHEDULE = [
   { num: 1,  date: 'March 28',  time: '7:30 PM', fixture: 'Royal Challengers Bengaluru vs Sunrisers Hyderabad' },
   { num: 2,  date: 'March 29',  time: '7:30 PM', fixture: 'Mumbai Indians vs Kolkata Knight Riders' },

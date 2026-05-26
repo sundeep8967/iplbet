@@ -39,7 +39,7 @@ import {
 // Models
 import { computeActiveMatches, computeOngoingMatches, computeSquadStats, computeUserStats } from '../models/statsModel';
 import { computeAdhocSquadStats, computeAdhocUserStats, computeActiveAdhocBets } from '../models/adhocStatsModel';
-import { BET_AMOUNT, BET_LOCK_MINUTES, IPL_SCHEDULE } from '../models/constants';
+import { BET_AMOUNT, BET_LOCK_MINUTES, IPL_SCHEDULE, getBetAmount } from '../models/constants';
 import { SQUAD_VIEW_BET } from '../models/squadViewMode';
 import { parseMatchDateTimeUTC } from '../utils/utcDate';
 
@@ -204,7 +204,10 @@ export function useAppController() {
     [adhocBets, adhocResults]
   );
 
-  const totalPot = useMemo(() => votes.length * BET_AMOUNT, [votes]);
+  const totalPot = useMemo(
+    () => votes.reduce((sum, vote) => sum + getBetAmount(vote.match_id), 0),
+    [votes]
+  );
 
   // ─── HANDLERS ───────────────────────────────────────────────────────────────
 

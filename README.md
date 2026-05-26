@@ -20,6 +20,7 @@ ChaiBet is a premium, real-time IPL betting dashboard designed specifically for 
 
 ### 💰 Economics of the Squad
 - **Automatic Deductions**: ₹10 is automatically deducted for every match, even if you forget to pick (promoting active participation!).
+For Play offs Matches it is ₹20.
 - **Winner-Takes-All**: The total pot is shared equally among those who picked the winning team.
 
 ---
