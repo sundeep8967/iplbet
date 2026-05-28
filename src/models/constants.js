@@ -6,6 +6,7 @@ export const BET_LOCK_MINUTES = 31;
 export const SPECIAL_BET_AMOUNTS = {
   71: 20,
   72: 20,
+  73: 20,
 };
 
 export function getBetAmount(matchOrId) {
@@ -104,6 +105,7 @@ export const IPL_SCHEDULE = [
   { num: 70, date: 'May 24',    time: '7:30 PM', fixture: 'Kolkata Knight Riders vs Delhi Capitals' },
   { num: 71, date: 'May 26',    time: '7:30 PM', fixture: 'Royal Challengers Bengaluru vs Gujarat Titans' },
   { num: 72, date: 'May 27',    time: '7:30 PM', fixture: 'Sunrisers Hyderabad vs Rajasthan Royals' },
+  { num: 73, date: 'May 29',    time: '7:30 PM', fixture: 'Gujarat Titans vs Rajasthan Royals' },
 ];
 
 export const MISC_RESULTS = {
