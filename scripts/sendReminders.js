@@ -139,7 +139,14 @@ async function run() {
 
     const [team1, team2] = targetMatch.fixture.split(' vs ');
 
-    const betAmount = targetMatch.num === 71 || targetMatch.num === 72 || targetMatch.num === 73 ? 20 : 10;
+    let betAmount;
+    if (targetMatch.num === 74) {
+      betAmount = 50;
+    } else if (targetMatch.num === 71 || targetMatch.num === 72 || targetMatch.num === 73) {
+      betAmount = 20;
+    } else {
+      betAmount = 10;
+    }
     const mailOptions = {
       from: `"ChaiBet Reminders" <${process.env.GMAIL_USER}>`,
       to: emailAddress,
